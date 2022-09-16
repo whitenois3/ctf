@@ -1,0 +1,58 @@
+#include "huffmate/utils/JumpTableUtil.huff"
+#include "huffmate/utils/Errors.huff"
+
+// TODO: ERC721 impl for rewards
+
+#define jumptable__packed DISPATCH = {
+    dispatch_0 dispatch_1
+}
+
+#define macro MAIN() = {
+    // Will revert if an invalid index is passed.
+    __tablestart(DISPATCH)     // [tablestart]
+    0x00 calldataload 0xE0 shr // [sig, tablestart]
+    RETRIEVE_FROM_PACKED_JT()  // [jumpdest]
+    jump                       // []
+
+    dispatch_0:
+        WILDCARD()
+    dispatch_1:
+        // TODO
+        0x40 0x00 mstore
+        0x20 0x00 return
+}
+
+#define macro QUEEN_OF_HEARTS() = {
+    0x04 calldataload          // [cd_elem]
+    returndatasize not eq      // [cd_elem == returndatasize]
+
+    // TODO
+
+    ASSERT()
+}
+
+// Offers a jump to an arbitrary destination in exchange for a brute
+// forced hash.
+//
+// Includes the function selector, sender address, and first calldata input
+// in hash input.
+//
+// 36 bits in total need to be brute forced:
+// - the final 5 nibbles of the hash must equal BABE9
+// - the first 2 bytes of the hash must equal the desired jumpdest
+#define macro WILDCARD() = {
+    0x00 calldataload          // [cd]
+    0xFFFFFFFF and             // [sig]
+    0x00 mstore                // []
+    caller 0x60 shl            // [caller << 0x60]
+    0x04 mstore                // []
+    0x04 calldataload          // [cd]
+    __RIGHTPAD(0xFFFFFFFFFFFFFFFF) and // [cd & 0xFFFFFFFFFFFFFFFF]
+    0x18 mstore                // []
+    0x20 0x00 sha3             // [hash]
+    dup1                       // [hash, hash]
+    0xFFFFF and                // [hash & 0xFFFFF, hash]
+    0xBABE9 eq                 // [0xBABE9 == (hash & 0xFFFFF), hash]
+    ASSERT()                   // [hash]
+    0xF0 shr jump              // []
+}
