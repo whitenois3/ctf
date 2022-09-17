@@ -1,0 +1,8 @@
+[package]
+name = "stage1_solver"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ethers = { version = "0.17.0" }
+rayon = "1.5.3"

@@ -1,14 +1,34 @@
 #include "huffmate/utils/JumpTableUtil.huff"
 #include "huffmate/utils/Errors.huff"
 
+////////////////////////////////////////////////////////////////
+//                         INTERFACES                         //
+////////////////////////////////////////////////////////////////
+
 #define function owner() view returns (address)
 
-// TODO: ERC721 impl for reward NFTs
+////////////////////////////////////////////////////////////////
+//                         CONSTANTS                          //
+////////////////////////////////////////////////////////////////
+
+#define constant TWO_BYTE_MASK = 0xFFFF
+#define constant RP_FOUR_BYTE_MASK = 0xFFFFFFFF00000000000000000000000000000000000000000000000000000000
+#define constant RP_EIGHT_BYTE_MASK = 0xFFFFFFFFFFFFFFFF000000000000000000000000000000000000000000000000
+#define constant ADDRESS_MASK = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+#define constant NFT_CONTRACT = 0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF
+
+////////////////////////////////////////////////////////////////
+//                           TABLES                           //
+////////////////////////////////////////////////////////////////
 
 #define jumptable__packed DISPATCH = {
     dispatch_0 dispatch_1 dispatch_2 dispatch_3 dispatch_4 dispatch_5
     dispatch_6 dispatch_7 dispatch_8 dispatch_9
 }
+
+////////////////////////////////////////////////////////////////
+//                          EXTERNAL                          //
+////////////////////////////////////////////////////////////////
 
 #define macro MAIN() = {
     0x04 calldataload          // [cd]
@@ -45,18 +65,49 @@
     // This dest can only be jumped to by `WILDCARD`
     // The challenge before the challenge >:D
     magic_dest:
-        // TODO: Mask/shift address in calldata that was loaded at the very beginning.
-        // The address will be in cd[4:24]
+        // Test that we got here:
+        [ADDRESS_MASK] and
+        0x00 mstore
+        0x20 0x00 return
+
+        // ...
+
         SOLVE()
         stop
 }
 
-// Blank constructor
-#define macro CONSTRUCTOR() = {}
+/// @dev Offers a jump to an arbitrary destination in exchange for a brute
+/// forced hash. The first part of the challenge is to find the inputs for a
+/// hash that satisfies the constraints and causes this macro to jump to
+/// the `SOLVE` entrypoint.
+///
+/// Includes the function selector, tx.origin address, and cd[4:12]
+/// in the hash input.
+///
+/// 32 bits in total need to be brute forced:
+/// - the final 2 bytes of the hash must equal D073
+/// - the first 2 bytes of the hash must equal the desired jumpdest
+#define macro WILDCARD() = {
+    0x00 calldataload          // [cd]
+    [RP_FOUR_BYTE_MASK] and    // [sig]
+    0x00 mstore                // []
+    origin 0x60 shl            // [origin << 0x60]
+    0x04 mstore                // []
+    0x04 calldataload          // [cd]
+    [RP_EIGHT_BYTE_MASK] and   // [cd & 0xFFFFFFFFFFFFFFFF...]
+    0x18 mstore                // []
+    0x20 0x00 sha3             // [hash]
+    dup1                       // [hash, hash]
+    [TWO_BYTE_MASK] and        // [hash & 0xFFFF, hash]
+    0xD073 eq                  // [0xD073 == (hash & 0xFFFF), hash]
+    ASSERT()                   // [hash]
+    0xF0 shr jump              // []
+}
 
 /// @dev Solve entrypoint 
 #define macro SOLVE() = takes (1) returns (1) {
-    // Input stack:               [player]
+    // Input stack:               [cd]
+    0x0C shr                   // [player]
 
     // "Player must be a contract"
     __RIGHTPAD(0x506C61796572206D757374206265206120636F6E7472616374)
@@ -112,32 +163,4 @@
 /// @dev Generates a challenge specific to the player
 #define macro GEN_CHALLENGE() = takes (1) returns (1) {
     // TODO
-}
-
-/// @dev Offers a jump to an arbitrary destination in exchange for a brute
-/// forced hash. The first part of the challenge is to find the inputs for a
-/// hash that satisfies the constraints and causes this macro to jump to
-/// the `SOLVE` entrypoint.
-///
-/// Includes the function selector, tx.origin address, and cd[32:36]
-/// in the hash input.
-///
-/// 32 bits in total need to be brute forced:
-/// - the final 2 bytes of the hash must equal D073
-/// - the first 2 bytes of the hash must equal the desired jumpdest
-#define macro WILDCARD() = {
-    0x00 calldataload          // [cd]
-    0xFFFFFFFF and             // [sig]
-    0x00 mstore                // []
-    origin 0x60 shl            // [origin << 0x60]
-    0x04 mstore                // []
-    0x04 calldataload          // [cd]
-    __RIGHTPAD(0xFFFFFFFFFFFFFFFF) and // [cd & 0xFFFFFFFFFFFFFFFF]
-    0x18 mstore                // []
-    0x20 0x00 sha3             // [hash]
-    dup1                       // [hash, hash]
-    0xFFFF and                 // [hash & 0xFFFF, hash]
-    0xD073 eq                  // [0xD073 == (hash & 0xFFFF), hash]
-    ASSERT()                   // [hash]
-    0xF0 shr jump              // []
 }
