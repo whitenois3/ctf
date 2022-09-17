@@ -40,7 +40,7 @@
     RETRIEVE_FROM_PACKED_JT()  // [jumpdest, cd]
     jump                       // [cd]
 
-    // TODO: Spice up dispatch table, leave some honeypots.
+    // TODO: Add honeypot dispatches
     dispatch_0:
         stop
     dispatch_1:
@@ -65,12 +65,7 @@
     // This dest can only be jumped to by `WILDCARD`
     // The challenge before the challenge >:D
     magic_dest:
-        // Test that we got here:
-        [ADDRESS_MASK] and
-        0x00 mstore
-        0x20 0x00 return
-
-        // ...
+        [ADDRESS_MASK] and     // [solution_addr]
 
         SOLVE()
         stop
@@ -106,22 +101,25 @@
 
 /// @dev Solve entrypoint 
 #define macro SOLVE() = takes (1) returns (1) {
-    // Input stack:               [cd]
-    0x0C shr                   // [player]
+    // Input stack:               [solution_addr]
+ 
+    // "Solution must be a contract"
+    __RIGHTPAD(0x536f6c7574696f6e206d757374206265206120636f6e7472616374)
+    0x1B                       // [0x1b, "Solution must be a contract", solution_addr]
+    dup3 extcodesize           // [codesize(solution), 0x1b, "Solution must be a contract", solution_addr]
+    iszero iszero              // [codesize(solution) != 0, 0x1b, "Solution must be a contract", solution_addr]
+    REQUIRE()                  // [solution_addr]
 
-    // "Player must be a contract"
-    __RIGHTPAD(0x506C61796572206D757374206265206120636F6E7472616374)
-    0x19                       // [0x19, "Player must be a contract", player]
-    dup3 extcodesize           // [codesize(player), 0x19, "Player must be a contract", player]
-    iszero iszero              // [codesize(player) != 0, 0x19, "Player must be a contract", player]
+    // "Solution is not yours"
+    __RIGHTPAD(0x536f6c7574696f6e206973206e6f7420796f757273)
+    0x15                       // [0x15, "Solution is not yours", player]
+    dup3                       // [player, 0x15, "Solution is not yours", player]
+    GET_OWNER() origin eq      // [player_owner == tx.origin, 0x15, "Solution is not yours", player]
     REQUIRE()                  // [player]
 
-    // "You may only use your own player"
-    0x596F75206D6179206F6E6C792075736520796F7572206F776E20706C61796572
-    0x20                       // [0x20, "You may only use your own player", player]
-    dup3                       // [player, 0x20, "You may only use your own player", player]
-    GET_OWNER() origin eq      // [player_owner == tx.origin, 0x20, "You may only use your own player", player]
-    REQUIRE()                  // [player]
+    // Test that we made it here.
+    0x00 mstore
+    0x20 0x00 return   
 
     // Store function selector in memory @ 0x00
     // TODO: Use a selector that is not on 4byte / eth sig DB
@@ -163,4 +161,40 @@
 /// @dev Generates a challenge specific to the player
 #define macro GEN_CHALLENGE() = takes (1) returns (1) {
     // TODO
+}
+
+#define macro HONEYPOT_1() = {
+    
+}
+
+#define macro HONEYPOT_2() = {
+    
+}
+
+#define macro HONEYPOT_3() = {
+    
+}
+
+#define macro HONEYPOT_4() = {
+    
+}
+
+#define macro HONEYPOT_5() = {
+    
+}
+
+#define macro HONEYPOT_6() = {
+    
+}
+
+#define macro HONEYPOT_7() = {
+    
+}
+
+#define macro HONEYPOT_8() = {
+    
+}
+
+#define macro HONEYPOT_9() = {
+    
 }
