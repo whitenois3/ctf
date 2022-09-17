@@ -1,12 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
+import {RewardNFT} from "../src/RewardNFT.sol";
 import {Test} from "forge-std/Test.sol";
 import {HuffDeployer} from "foundry-huff/HuffDeployer.sol";
-
-interface IChallenge {
-// TODO
-}
 
 contract Solution {
     function owner() external pure returns (address) {
@@ -19,17 +16,26 @@ contract Solution {
 }
 
 contract ChallengeTest is Test {
-    IChallenge public challenge;
+    RewardNFT public nft;
+    address public challenge;
     Solution public solution;
 
     function setUp() public {
-        challenge = IChallenge(HuffDeployer.config().deploy("DovesInTheWind"));
+        nft = new RewardNFT(address(this));
+        challenge = HuffDeployer.config().with_addr_constant("NFT_ADDR", address(nft)).deploy("DovesInTheWind");
         solution = new Solution();
+
+        // Update owner to challenge contract address
+        nft.transferOwnership(address(challenge));
     }
+
+    ////////////////////////////////////////////////////////////////
+    //                      CHALLENGE TESTS                       //
+    ////////////////////////////////////////////////////////////////
 
     function testSolve() public {
         // Set tx.origin to beefbabe
-        vm.startPrank(address(this), address(0x00000000000000000000000000000000bEefbabe));
+        vm.startPrank(address(this), solution.owner());
 
         // Create input with beefbabe's magic.
         // Will need to be changed once DovesInTheWind.huff has more code above
@@ -43,13 +49,27 @@ contract ChallengeTest is Test {
 
         // Call the challenge's third dispatch to get access to the wildcard logic.
         emit log_named_bytes("input", abi.encodeWithSelector(0x00000003, input));
-        (bool success, bytes memory a) = address(challenge).call(abi.encodeWithSelector(0x00000003, input));
+        (bool success, bytes memory res) = address(challenge).call(abi.encodeWithSelector(0x00000003, input));
         assertTrue(success);
 
         address returned;
         assembly {
-            returned := mload(add(a, 0x20))
+            returned := mload(add(res, 0x20))
         }
-        assertEq(returned, address(solution));
+        assertEq(returned, solAddr);
+    }
+
+    ////////////////////////////////////////////////////////////////
+    //                      REWARD NFT TESTS                      //
+    ////////////////////////////////////////////////////////////////
+
+    // Should fail because the Challenge contract is the owner.
+    function testFailTransferNFTOwnership() public {
+        nft.transferOwnership(address(this));
+    }
+
+    // Should fail because the Challenge contract is the owner.
+    function testFailMintNFT() public {
+        nft.mint(address(solution.owner()));
     }
 }
