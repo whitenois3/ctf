@@ -10,7 +10,7 @@ Contracts for the Whitenoise CTF.
 
 ### Stage 1
 
-- [ ] Create honeypot macros for dispatch table.
+- [x] Create honeypot macros for dispatch table.
 
 ### Stage 2
 
@@ -18,3 +18,4 @@ Contracts for the Whitenoise CTF.
 - [ ] Store leaderboard in the NFT contract, Optimizer NFTs claimable at the end of the challenge.
 - [ ] Write the optimization challenge.
   - [ ] ...
+- [ ] Reentrancy guard
