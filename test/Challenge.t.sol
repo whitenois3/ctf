@@ -17,13 +17,5 @@ contract ChallengeTest is Test {
         );
     }
 
-    function testSetup() public {
-        emit log_named_address("challenge_addr", address(challenge));
-        uint not_zero;
-        assembly {
-            not_zero := not(1000000)
-        }
-        address(challenge).call(abi.encodePacked(bytes4(0x00000000), not_zero));
-        address(challenge).call(abi.encode(bytes4(0x00000001)));
-    }
+    // TODO
 }

@@ -1,58 +1,143 @@
 #include "huffmate/utils/JumpTableUtil.huff"
 #include "huffmate/utils/Errors.huff"
 
-// TODO: ERC721 impl for rewards
+#define function owner() view returns (address)
+
+// TODO: ERC721 impl for reward NFTs
 
 #define jumptable__packed DISPATCH = {
-    dispatch_0 dispatch_1
+    dispatch_0 dispatch_1 dispatch_2 dispatch_3 dispatch_4 dispatch_5
+    dispatch_6 dispatch_7 dispatch_8 dispatch_9
 }
 
 #define macro MAIN() = {
-    // Will revert if an invalid index is passed.
-    __tablestart(DISPATCH)     // [tablestart]
-    0x00 calldataload 0xE0 shr // [sig, tablestart]
-    RETRIEVE_FROM_PACKED_JT()  // [jumpdest]
-    jump                       // []
+    0x04 calldataload          // [cd]
 
+    // Will revert if an invalid dispatch table index is passed as the
+    // selector.
+    __tablestart(DISPATCH)     // [tablestart, cd]
+    0x00 calldataload 0xE0 shr // [sig, tablestart, cd]
+    RETRIEVE_FROM_PACKED_JT()  // [jumpdest, cd]
+    jump                       // [cd]
+
+    // TODO: Spice up dispatch table, leave some honeypots.
     dispatch_0:
-        WILDCARD()
+        stop
     dispatch_1:
-        // TODO
-        0x40 0x00 mstore
-        0x20 0x00 return
+        stop
+    dispatch_2:
+        stop
+    dispatch_3:
+        WILDCARD()
+    dispatch_4:
+        stop
+    dispatch_5:
+        stop
+    dispatch_6:
+        stop
+    dispatch_7:
+        stop
+    dispatch_8:
+        stop
+    dispatch_9:
+        stop
+
+    // This dest can only be jumped to by `WILDCARD`
+    // The challenge before the challenge >:D
+    magic_dest:
+        // TODO: Mask/shift address in calldata that was loaded at the very beginning.
+        // The address will be in cd[4:24]
+        SOLVE()
+        stop
 }
 
-#define macro QUEEN_OF_HEARTS() = {
-    0x04 calldataload          // [cd_elem]
-    returndatasize not eq      // [cd_elem == returndatasize]
+// Blank constructor
+#define macro CONSTRUCTOR() = {}
 
+/// @dev Solve entrypoint 
+#define macro SOLVE() = takes (1) returns (1) {
+    // Input stack:               [player]
+
+    // "Player must be a contract"
+    __RIGHTPAD(0x506C61796572206D757374206265206120636F6E7472616374)
+    0x19                       // [0x19, "Player must be a contract", player]
+    dup3 extcodesize           // [codesize(player), 0x19, "Player must be a contract", player]
+    iszero iszero              // [codesize(player) != 0, 0x19, "Player must be a contract", player]
+    REQUIRE()                  // [player]
+
+    // "You may only use your own player"
+    0x596F75206D6179206F6E6C792075736520796F7572206F776E20706C61796572
+    0x20                       // [0x20, "You may only use your own player", player]
+    dup3                       // [player, 0x20, "You may only use your own player", player]
+    GET_OWNER() origin eq      // [player_owner == tx.origin, 0x20, "You may only use your own player", player]
+    REQUIRE()                  // [player]
+
+    // Store function selector in memory @ 0x00
+    // TODO: Use a selector that is not on 4byte / eth sig DB
+    // "solve(uint)" for now
+    __FUNC_SIG("solve(uint256)") 0x00 mstore
+
+    // TODO: Generate address-specific problem input & store in mem @ 0x20
+    0x01 0x20 mstore           // [player]
+    
+    0x00 0x24 0x1c 0x00        // [0x00, 0x1c, 0x24, 0x00, player]
+    0x20 swap5                 // [player, 0x00, 0x1c, 0x24, 0x00, 0x20]
+    gas call                   // [success]
+    
+    // TODO: Measure gas consumed in call
+
+    // TODO: Validate answer, check if answer beats previous in terms
+    // of gas consumption.
+
+    // Return stack:              []
+}
+
+/// @dev Staticcalls a contract's "owner()" function and leaves
+///      the result on the stack.
+#define macro GET_OWNER() = takes (1) returns (1) {
+    // Input stack:               [player]
+
+    __FUNC_SIG(owner) 0x00 mstore
+
+    0x00 0x04 0x1c 0x20 swap4  // [player, 0x1c, 0x04, 0x00, 0x20]
+    gas staticcall             // [success]
+
+    // Revert if call failed.
+    ASSERT()                   // []
+
+    // Store result on the stack
+    0x00 mload                 // [owner]
+}
+
+/// @dev Generates a challenge specific to the player
+#define macro GEN_CHALLENGE() = takes (1) returns (1) {
     // TODO
-
-    ASSERT()
 }
 
-// Offers a jump to an arbitrary destination in exchange for a brute
-// forced hash.
-//
-// Includes the function selector, sender address, and first calldata input
-// in hash input.
-//
-// 36 bits in total need to be brute forced:
-// - the final 5 nibbles of the hash must equal BABE9
-// - the first 2 bytes of the hash must equal the desired jumpdest
+/// @dev Offers a jump to an arbitrary destination in exchange for a brute
+/// forced hash. The first part of the challenge is to find the inputs for a
+/// hash that satisfies the constraints and causes this macro to jump to
+/// the `SOLVE` entrypoint.
+///
+/// Includes the function selector, tx.origin address, and cd[32:36]
+/// in the hash input.
+///
+/// 32 bits in total need to be brute forced:
+/// - the final 2 bytes of the hash must equal D073
+/// - the first 2 bytes of the hash must equal the desired jumpdest
 #define macro WILDCARD() = {
     0x00 calldataload          // [cd]
     0xFFFFFFFF and             // [sig]
     0x00 mstore                // []
-    caller 0x60 shl            // [caller << 0x60]
+    origin 0x60 shl            // [origin << 0x60]
     0x04 mstore                // []
     0x04 calldataload          // [cd]
     __RIGHTPAD(0xFFFFFFFFFFFFFFFF) and // [cd & 0xFFFFFFFFFFFFFFFF]
     0x18 mstore                // []
     0x20 0x00 sha3             // [hash]
     dup1                       // [hash, hash]
-    0xFFFFF and                // [hash & 0xFFFFF, hash]
-    0xBABE9 eq                 // [0xBABE9 == (hash & 0xFFFFF), hash]
+    0xFFFF and                 // [hash & 0xFFFF, hash]
+    0xD073 eq                  // [0xD073 == (hash & 0xFFFF), hash]
     ASSERT()                   // [hash]
     0xF0 shr jump              // []
 }
