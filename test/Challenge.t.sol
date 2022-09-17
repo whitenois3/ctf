@@ -11,7 +11,7 @@ contract Solution {
     }
 
     function solve(uint256) external returns (uint256) {
-        return 0; // TODO
+        return 1; // TODO
     }
 }
 
@@ -34,8 +34,8 @@ contract ChallengeTest is Test {
     ////////////////////////////////////////////////////////////////
 
     function testSolve() public {
-        // Set tx.origin to beefbabe
-        vm.startPrank(address(this), solution.owner());
+        // Set msg.sender & tx.origin to beefbabe
+        vm.startPrank(solution.owner(), solution.owner());
 
         // Create input with beefbabe's magic.
         // Will need to be changed once DovesInTheWind.huff has more code above
@@ -49,14 +49,14 @@ contract ChallengeTest is Test {
 
         // Call the challenge's third dispatch to get access to the wildcard logic.
         emit log_named_bytes("input", abi.encodeWithSelector(0x00000003, input));
-        (bool success, bytes memory res) = address(challenge).call(abi.encodeWithSelector(0x00000003, input));
-        assertTrue(success);
+        (bool success,) = address(challenge).call(abi.encodeWithSelector(0x00000003, input));
 
-        address returned;
-        assembly {
-            returned := mload(add(res, 0x20))
-        }
-        assertEq(returned, solAddr);
+        assertTrue(success);
+        assertEq(nft.balanceOf(solution.owner()), 1);
+        assertTrue(nft.ownerOf(0) == solution.owner());
+
+        // Finish prank
+        vm.stopPrank();
     }
 
     ////////////////////////////////////////////////////////////////

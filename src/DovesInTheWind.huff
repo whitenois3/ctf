@@ -1,5 +1,5 @@
-#include "huffmate/utils/JumpTableUtil.huff"
 #include "huffmate/utils/Errors.huff"
+#include "huffmate/utils/JumpTableUtil.huff"
 #include "huffmate/utils/LibBit.huff"
 #include "huffmate/math/FixedPointMath.huff"
 #include "huffmate/math/Trigonometry.huff"
@@ -10,10 +10,13 @@
 
 #define function owner() view returns (address)
 
+#define event NewLeader(address indexed solver, uint256 score)
+
 ////////////////////////////////////////////////////////////////
 //                         CONSTANTS                          //
 ////////////////////////////////////////////////////////////////
 
+#define constant HIGH_SCORE_SLOT = FREE_STORAGE_POINTER()
 #define constant TWO_BYTE_MASK = 0xFFFF
 #define constant RP_FOUR_BYTE_MASK = 0xFFFFFFFF00000000000000000000000000000000000000000000000000000000
 #define constant RP_EIGHT_BYTE_MASK = 0xFFFFFFFFFFFFFFFF000000000000000000000000000000000000000000000000
@@ -31,6 +34,11 @@
 //                         CHALLENGE                          //
 ////////////////////////////////////////////////////////////////
 
+#define macro CONSTRUCTOR() = {
+    // Set the high score to max int
+    0x00 not [HIGH_SCORE_SLOT] sstore
+}
+
 #define macro MAIN() = {
     0x04 calldataload          // [cd]
 
@@ -38,10 +46,21 @@
     // selector.
     __tablestart(DISPATCH)     // [tablestart, cd]
     0x00 calldataload 0xE0 shr // [sig, tablestart, cd]
+
+    // TODO: Enforce table size limit so that people can't use a 2 byte
+    //       value after the table as their dispatch jumpdest.
+    //       If the jumpdest of `WILDCARD` doesn't show up in the bytecode
+    //       after the table, it should be safe, but there could still
+    //       *potentially* be an unintended exploit if we don't introduce
+    //       this check.
+    // 0x05 dup2 lt ASSERT()      // [sig, tablestart, cd]
+
     RETRIEVE_FROM_PACKED_JT()  // [jumpdest, cd]
     jump                       // [cd]
 
-    // TODO: Add honeypot dispatches
+
+    // DISPATCH LOGIC
+    // ==============
     dispatch_0:
         HONEYPOT_0()
     dispatch_1:
@@ -62,7 +81,7 @@
         stop
 
     fail:
-        0x00 dup1 revert
+        PANIC()
 }
 
 /// @dev Offers a jump to an arbitrary destination in exchange for a brute
@@ -106,14 +125,10 @@
 
     // "Solution is not yours"
     __RIGHTPAD(0x536f6c7574696f6e206973206e6f7420796f757273)
-    0x15                       // [0x15, "Solution is not yours", player]
-    dup3                       // [player, 0x15, "Solution is not yours", player]
-    GET_OWNER() origin eq      // [player_owner == tx.origin, 0x15, "Solution is not yours", player]
-    REQUIRE()                  // [player]
-
-    // Test that we made it here.
-    0x00 mstore
-    0x20 0x00 return   
+    0x15                       // [0x15, "Solution is not yours", solution_addr]
+    dup3                       // [solution_addr, 0x15, "Solution is not yours", solution_addr]
+    GET_OWNER() origin eq      // [solution_owner == tx.origin, 0x15, "Solution is not yours", solution_addr]
+    REQUIRE()                  // [solution_addr]
 
     // Store function selector in memory @ 0x00
     // TODO: Use a selector that is not on 4byte / eth sig DB
@@ -121,28 +136,92 @@
     __FUNC_SIG("solve(uint256)") 0x00 mstore
 
     // TODO: Generate address-specific problem input & store in mem @ 0x20
-    0x01 0x20 mstore           // [player]
+    GEN_CHALLENGE()            // [challenge_input, solution_addr]
+    0x20 mstore                // [solution_addr]
     
-    0x00 0x24 0x1c 0x00        // [0x00, 0x1c, 0x24, 0x00, player]
-    0x20 swap5                 // [player, 0x00, 0x1c, 0x24, 0x00, 0x20]
-    gas call                   // [success]
-    
-    // TODO: Measure gas consumed in call
+    dup1 extcodesize           // [codesize(solution), solution_addr]
+    swap1                      // [solution_addr, codesize(solution)]
+    gas                        // [gasBefore, solution_addr, codesize(solution)]
+    swap1                      // [solution_addr, gasBefore, codesize(solution)]
 
-    // TODO: Validate answer, check if answer beats previous in terms
-    // of gas consumption.
+    // Perform call to solution contract with the generated input
+    0x00 0x24 0x1c 0x00        // [0x00, 0x1c, 0x24, 0x00, solution_addr, gasBefore, codesize(solution)]
+    0x20 swap5                 // [solution_addr, 0x00, 0x1c, 0x24, 0x00, 0x20, gasBefore, codesize(solution)]
+    gas call                   // [success, gasBefore, codesize(solution)]
+
+    // Ensure call to solution contract succeeded
+    ASSERT()                   // [gasBefore, codesize(solution)]
+
+    // TODO: Subtract PUSH / SWAP / ASSERT gas for an accurate result.
+    gas swap1 sub              // [gasUsed, codesize(solution)]
+    add                        // [newScore]
+
+    // Assert that solution is valid
+    0x20 0x00 dup1             // [0x00, 0x00, 0x20, newScore]
+    returndatacopy             // [newScore]
+    0x00 mload                 // [solution, newScore]
+    // VALIDATE_SOLUTION()        // [newScore]
+    pop
+    
+    // Assert that the new score is less than the old score
+    [HIGH_SCORE_SLOT] sload    // [prevScore, newScore]
+    // TODO: Verbose revert message on failure
+    dup2 lt iszero             // [newScore >= prevScore, newScore]
+    fail jumpi                 // [newScore]
+
+    // Mint Reward to msg.sender
+    // TODO: Add logic in NFT to hold off on claiming until the end of the game.
+    //       First solver gets their special edition NFT (id = 0) immediately.
+    caller                     // [sender, newScore]
+    SAFE_MINT_NFT()            // [newScore]
+
+    // Update highest score
+    dup1 [HIGH_SCORE_SLOT]     // [HIGH_SCORE_SLOT, newScore, newScore]
+    sstore                     // [newScore]
+
+    // Emit event
+    caller 0x00 mstore         // [newScore]
+    0x20 mstore                // []
+    0x40 0x00 log0             // []
+
+    stop
 
     // Return stack:              []
 }
 
+////////////////////////////////////////////////////////////////
+//                       SCORE KEEPING                        //
+////////////////////////////////////////////////////////////////
+
+/// @dev Used to mint a new Reward NFT
+#define macro SAFE_MINT_NFT() = takes (1) {
+    // Input stack:               [to]
+
+    0x6a627842 0xE0 shl        // [0xE06a627842, to]
+    0x00 mstore                // [to]
+    0x04 mstore                // []
+
+    0x00 dup1 0x24 dup2 dup1   // [0x00, 0x00, 0x20, 0x00, 0x00]
+    [NFT_ADDR]                 // [NFT_ADDR, 0x00, 0x00, 0x24, 0x00, 0x00]
+    gas call                   // [success]
+
+    // Revert if mint failed.
+    ASSERT()                   // []
+}
+
+////////////////////////////////////////////////////////////////
+//                          HELPERS                           //
+////////////////////////////////////////////////////////////////
+
 /// @dev Staticcalls a contract's "owner()" function and leaves
-///      the result on the stack.
+///      the result on the stack. Does not check if the address
+///      being called is a contract.
 #define macro GET_OWNER() = takes (1) returns (1) {
-    // Input stack:               [player]
+    // Input stack:               [solution_addr]
 
     __FUNC_SIG(owner) 0x00 mstore
 
-    0x00 0x04 0x1c 0x20 swap4  // [player, 0x1c, 0x04, 0x00, 0x20]
+    0x00 0x04 0x1c 0x20 swap4  // [solution_addr, 0x1c, 0x04, 0x00, 0x20]
     gas staticcall             // [success]
 
     // Revert if call failed.
@@ -154,8 +233,13 @@
     // Return stack:              [owner]
 }
 
-/// @dev Generates a challenge specific to the player
+/// @dev Generates a challenge specific to the solution_addr
 #define macro GEN_CHALLENGE() = takes (1) returns (1) {
+    0x01 // TODO
+}
+
+/// @dev Checks if a solution to the optimization challenge is valid
+#define macro VALIDATE_SOLUTION() = takes (1) returns (1) {
     // TODO
 }
 
