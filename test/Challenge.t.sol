@@ -41,7 +41,7 @@ contract ChallengeTest is Test {
         // Will need to be changed once DovesInTheWind.huff has more code above
         // the magic_dest label, as the solution input's hash contains the desired jumpdest.
         bytes32 input;
-        uint256 magic = 0x4000000010f2def3;
+        uint256 magic = 0x800000001060c983;
         address solAddr = address(solution);
         assembly {
             input := or(shl(0xC0, magic), solAddr)

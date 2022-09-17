@@ -150,6 +150,8 @@
 
     // Store result on the stack
     0x00 mload                 // [owner]
+
+    // Return stack:              [owner]
 }
 
 /// @dev Generates a challenge specific to the player
