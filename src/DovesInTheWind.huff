@@ -1,5 +1,8 @@
 #include "huffmate/utils/JumpTableUtil.huff"
 #include "huffmate/utils/Errors.huff"
+#include "huffmate/utils/LibBit.huff"
+#include "huffmate/math/FixedPointMath.huff"
+#include "huffmate/math/Trigonometry.huff"
 
 ////////////////////////////////////////////////////////////////
 //                         INTERFACES                         //
@@ -21,12 +24,11 @@
 ////////////////////////////////////////////////////////////////
 
 #define jumptable__packed DISPATCH = {
-    dispatch_0 dispatch_1 dispatch_2 dispatch_3 dispatch_4 dispatch_5
-    dispatch_6 dispatch_7 dispatch_8 dispatch_9
+    dispatch_0 dispatch_1 dispatch_2 dispatch_3 dispatch_4
 }
 
 ////////////////////////////////////////////////////////////////
-//                          EXTERNAL                          //
+//                         CHALLENGE                          //
 ////////////////////////////////////////////////////////////////
 
 #define macro MAIN() = {
@@ -41,25 +43,15 @@
 
     // TODO: Add honeypot dispatches
     dispatch_0:
-        stop
+        HONEYPOT_0()
     dispatch_1:
-        stop
+        HONEYPOT_1()
     dispatch_2:
-        stop
+        HONEYPOT_2()
     dispatch_3:
         WILDCARD()
     dispatch_4:
-        stop
-    dispatch_5:
-        stop
-    dispatch_6:
-        stop
-    dispatch_7:
-        stop
-    dispatch_8:
-        stop
-    dispatch_9:
-        stop
+        HONEYPOT_4()
 
     // This dest can only be jumped to by `WILDCARD`
     // The challenge before the challenge >:D
@@ -68,6 +60,9 @@
 
         SOLVE()
         stop
+
+    fail:
+        0x00 dup1 revert
 }
 
 /// @dev Offers a jump to an arbitrary destination in exchange for a brute
@@ -101,7 +96,7 @@
 /// @dev Solve entrypoint 
 #define macro SOLVE() = takes (1) returns (1) {
     // Input stack:               [solution_addr]
- 
+
     // "Solution must be a contract"
     __RIGHTPAD(0x536f6c7574696f6e206d757374206265206120636f6e7472616374)
     0x1B                       // [0x1b, "Solution must be a contract", solution_addr]
@@ -162,38 +157,50 @@
     // TODO
 }
 
+////////////////////////////////////////////////////////////////
+//                         HONEYPOTS                          //
+////////////////////////////////////////////////////////////////
+
+/// @dev Basically a noop, random mulDivDown call with calldata as the denominator.
+#define macro HONEYPOT_0() = {
+    // Input stack:               [cd]
+
+    0xa57b3d3e                 // [0xa57b3d3e, cd]
+    0x957f47157a               // [0x957f47157a, 0xa57b3d3e, cd]
+    MUL_DIV_DOWN(fail)         // [0x957f47157a * 0xa57b3d3e / cd]
+
+    0x00 mstore                // []
+    0x20 0x00 return
+}
+
+/// @dev Creates an infinite loop on itself, will run out of gas.
 #define macro HONEYPOT_1() = {
-    
+    // Input stack:               [cd]
+
+    0x01 0x08 shl              // [0x0100, cd]
+    returndatasize add         // [0x0100 + returndatasize, cd]
+    chainid and                // [(0x1000 + returndatasize) & chainid, cd]
+
+    dispatch_1 jump            // [(0x1000 + returndatasize) & chainid, cd]
+
+    // Unnecessary
+    stop
 }
 
+/// @dev Another noop 
 #define macro HONEYPOT_2() = {
-    
+    // Input stack:               [cd]
+
+    SIN()                      // [sin(cd)]
+    stop
+    SQRT()
 }
 
-#define macro HONEYPOT_3() = {
-    
-}
-
+/// @dev Retrieves the number of set bits in calldata[4:36]
 #define macro HONEYPOT_4() = {
-    
-}
+    // Input stack:               [cd]
+    POP_COUNT()
 
-#define macro HONEYPOT_5() = {
-    
-}
-
-#define macro HONEYPOT_6() = {
-    
-}
-
-#define macro HONEYPOT_7() = {
-    
-}
-
-#define macro HONEYPOT_8() = {
-    
-}
-
-#define macro HONEYPOT_9() = {
-    
+    0x00 mstore                // []
+    0x20 0x00 return
 }
