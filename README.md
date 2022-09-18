@@ -6,7 +6,7 @@ Contracts for the Whitenoise CTF.
 
 ### General
 
-- [ ] Create reward NFT contract.
+- [x] Create reward NFT contract.
 
 ### Stage 1
 
@@ -14,8 +14,7 @@ Contracts for the Whitenoise CTF.
 
 ### Stage 2
 
-- [ ] Add a macro to mint the exploiter NFT for the first solver.
-- [ ] Store leaderboard in the NFT contract, Optimizer NFTs claimable at the end of the challenge.
-- [ ] Write the optimization challenge.
-  - [ ] ...
-- [ ] Reentrancy guard
+- [x] Add a macro to mint the exploiter NFT for the first solver.
+- [x] Store leaderboard in the NFT contract, Optimizer NFTs claimable at the end of the challenge.
+- [x] Write the optimization challenge.
+- [ ] Reentrancy guard (? - Might not need)

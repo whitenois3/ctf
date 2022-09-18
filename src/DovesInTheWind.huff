@@ -170,7 +170,7 @@
     // TODO: Add logic in NFT to hold off on claiming until the end of the game.
     //       First solver gets their special edition NFT (id = 0) immediately.
     caller                     // [sender, gasUsed, codesize(solution), challenge_input]
-    SAFE_MINT_NFT()            // [newScore, challenge_input]
+    SUBMIT()                   // [newScore, challenge_input]
 
     // Update highest (erm, lowest, ykwim) score and hault
     [HIGH_SCORE_SLOT] sstore   // [challenge_input]
@@ -181,11 +181,11 @@
 //                       SCORE KEEPING                        //
 ////////////////////////////////////////////////////////////////
 
-/// @dev Used to mint a new Reward NFT
-#define macro SAFE_MINT_NFT() = takes (1) {
+/// @dev Used to submit the new solution to the NFT contract
+#define macro SUBMIT() = takes (1) {
     // Input stack:               [to, gasUsed, codesize(solution)]
 
-    0x156e29f6 0xE0 shl        // [0x156e29f6..., to, gasUsed, codesize(solution)]
+    0xb57c0be4 0xE0 shl        // [0xb57c0be4..., to, gasUsed, codesize(solution)]
     0x00 mstore                // [to, gasUsed, codesize(solution)]
     0x04 mstore                // [gasUsed, codesize(solution)]
 
