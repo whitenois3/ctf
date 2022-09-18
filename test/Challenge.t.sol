@@ -121,7 +121,7 @@ contract ChallengeTest is Test {
     }
 
     function testFailSolveAfterChallengeIsOver() public {
-        vm.warp(block.timestamp + 14 days + 1 seconds);
+        vm.warp(block.timestamp + 21 days + 1 seconds);
 
         // Attempt first solution
         solve(solution.owner(), address(solution), BEEFBABE_MAGIC);
@@ -160,7 +160,7 @@ contract ChallengeTest is Test {
         assertTrue(nft.ownerOf(1) == owner);
         assertIsTheChad(solution.owner(), 9008);
 
-        vm.warp(block.timestamp + 14 days + 1 seconds);
+        vm.warp(block.timestamp + 21 days + 1 seconds);
         vm.prank(solution.owner());
         nft.claim();
 
@@ -179,7 +179,7 @@ contract ChallengeTest is Test {
         assertTrue(nft.ownerOf(1) == owner);
         assertIsTheChad(solution.owner(), 9008);
 
-        vm.warp(block.timestamp + 14 days + 1 seconds);
+        vm.warp(block.timestamp + 21 days + 1 seconds);
         vm.prank(solution.owner());
         nft.claim();
         nft.claim();
@@ -210,7 +210,7 @@ contract ChallengeTest is Test {
         assertTrue(nft.ownerOf(1) == owner);
         assertIsTheChad(solution.owner(), 9008);
 
-        vm.warp(block.timestamp + 14 days + 1 seconds);
+        vm.warp(block.timestamp + 21 days + 1 seconds);
         vm.prank(address(0xdeadbeef));
         nft.claim();
     }

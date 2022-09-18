@@ -120,7 +120,7 @@ contract WhitenoiseNFT is ERC721, ReentrancyGuard {
     ////////////////////////////////////////////////////////////////
 
     constructor() ERC721("Doves in the Wind", "WNC1") {
-        END_TIME = block.timestamp + 14 days;
+        END_TIME = block.timestamp + 21 days;
 
         bool creatorIsEOA;
         assembly {
