@@ -150,18 +150,18 @@ contract WhitenoiseNFT is ERC721, ReentrancyGuard {
         // Check for creator special edition
         if (id == 0) {
             // TODO
-            return "";
+            return "ipfs://bafkreihxgzplo7ociu4zhdt2l6ivomrbihe5dfvc4m6wyvoshn6yne4afy";
         }
 
         // Check for first solver special edition
         if (id == 1) {
             // TODO
-            return "";
+            return "ipfs://bafkreifhqz35kbftonyp52kikkdwhq5cfxs5czynbzny5gy2qkbtfs2lwu";
         }
 
         // Optimizer challenge editions
         // TODO
-        return "";
+        return "ipfs://bafkreibgjyqj7jd24omupfqskkd7xuqr2rljsqwm6ctjaobrofg356fp5e";
     }
 
     /// @notice Returns the current Chad.
@@ -214,6 +214,7 @@ contract WhitenoiseNFT is ERC721, ReentrancyGuard {
 
         // Copy `numChads` to the stack
         uint256 _numChads = numChads;
+
         // Add the new leader to the leaderboard.
         leaderboard[_numChads] = Chad({
             solver: _solver,
@@ -221,6 +222,7 @@ contract WhitenoiseNFT is ERC721, ReentrancyGuard {
             gasUsed: uint64(gasUsed),
             codeSize: uint64(codeSize)
         });
+
         // Increase number of Chads.
         // SAFETY: It is unrealistic that this will ever overflow.
         assembly {

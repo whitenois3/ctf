@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.17;
 
 import {WhitenoiseNFT} from "../src/WhitenoiseNFT.sol";
 import {Test} from "forge-std/Test.sol";
@@ -121,7 +121,7 @@ contract ChallengeTest is Test {
     }
 
     function testFailSolveAfterChallengeIsOver() public {
-        vm.warp(14 days + 1 seconds);
+        vm.warp(block.timestamp + 14 days + 1 seconds);
 
         // Attempt first solution
         solve(solution.owner(), address(solution), BEEFBABE_MAGIC);
@@ -160,7 +160,7 @@ contract ChallengeTest is Test {
         assertTrue(nft.ownerOf(1) == owner);
         assertIsTheChad(solution.owner(), 9008);
 
-        vm.warp(14 days + 1 seconds);
+        vm.warp(block.timestamp + 14 days + 1 seconds);
         vm.prank(solution.owner());
         nft.claim();
 
@@ -179,7 +179,7 @@ contract ChallengeTest is Test {
         assertTrue(nft.ownerOf(1) == owner);
         assertIsTheChad(solution.owner(), 9008);
 
-        vm.warp(14 days + 1 seconds);
+        vm.warp(block.timestamp + 14 days + 1 seconds);
         vm.prank(solution.owner());
         nft.claim();
         nft.claim();
@@ -195,7 +195,7 @@ contract ChallengeTest is Test {
         assertTrue(nft.ownerOf(1) == owner);
         assertIsTheChad(solution.owner(), 9008);
 
-        vm.warp(12 days);
+        vm.warp(block.timestamp + 12 days);
         vm.prank(solution.owner());
         nft.claim();
     }
@@ -210,7 +210,7 @@ contract ChallengeTest is Test {
         assertTrue(nft.ownerOf(1) == owner);
         assertIsTheChad(solution.owner(), 9008);
 
-        vm.warp(14 days + 1 seconds);
+        vm.warp(block.timestamp + 14 days + 1 seconds);
         vm.prank(address(0xdeadbeef));
         nft.claim();
     }
