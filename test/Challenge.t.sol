@@ -5,21 +5,30 @@ import {RewardNFT} from "../src/RewardNFT.sol";
 import {Test} from "forge-std/Test.sol";
 import {HuffDeployer} from "foundry-huff/HuffDeployer.sol";
 
-contract Solution {
+/// @notice Solution interface
+interface ISolution {
+    function owner() external virtual returns (address);
+
+    function solve(uint256) external virtual returns (uint256);
+}
+
+/// @notice An unoptimized solution
+contract Solution is ISolution {
     function owner() external pure returns (address) {
         return 0x00000000000000000000000000000000bEefbabe;
     }
 
     function solve(uint256) external returns (uint256) {
-        uint a = 0x100;
-        uint b = 0x100;
+        uint256 a = 0x100;
+        uint256 b = 0x100;
         a = a - b + a;
         a = a >> 0x08;
         return a; // TODO
     }
 }
 
-contract OptimizedSolition {
+/// @notice An optimized solution
+contract OptimizedSolution is ISolution {
     function owner() external pure returns (address) {
         return 0x00000000000000000000000000000000bEefbabe;
     }
@@ -29,20 +38,31 @@ contract OptimizedSolition {
     }
 }
 
+/// @notice Challenge Tests
 contract ChallengeTest is Test {
     RewardNFT public nft;
     address public challenge;
+
     Solution public solution;
-    OptimizedSolition public oSolution;
+    OptimizedSolution public oSolution;
 
     function setUp() public {
-        nft = new RewardNFT(address(this));
+        // Deploy as a random EOA
+        vm.startPrank(address(0xDEADBEEF));
+
+        // Deploy RewardNFT and `DovesInTheWind` Challenge
+        nft = new RewardNFT();
         challenge = HuffDeployer.config().with_addr_constant("NFT_ADDR", address(nft)).deploy("DovesInTheWind");
-        solution = new Solution();
-        oSolution = new OptimizedSolition();
 
         // Update owner to challenge contract address
         nft.transferOwnership(address(challenge));
+
+        // Deploy solutions
+        solution = new Solution();
+        oSolution = new OptimizedSolution();
+
+        // Drop prank
+        vm.stopPrank();
     }
 
     ////////////////////////////////////////////////////////////////
@@ -50,146 +70,77 @@ contract ChallengeTest is Test {
     ////////////////////////////////////////////////////////////////
 
     function testSolve() public {
-        // Set msg.sender & tx.origin to beefbabe
-        vm.startPrank(solution.owner(), solution.owner());
+        // Attempt first solution
+        solve(solution.owner(), address(solution), 0x800000001060c983, 1);
 
-        // Create input with beefbabe's magic.
-        // Will need to be changed once DovesInTheWind.huff has more code above
-        // the magic_dest label, as the solution input's hash contains the desired jumpdest.
-        bytes32 input;
-        uint256 magic = 0x800000001060c983;
-        address solAddr = address(solution);
-        assembly {
-            input := or(shl(0xC0, magic), solAddr)
-        }
-
-        // Call the challenge's third dispatch to get access to the wildcard logic.
-        emit log_named_bytes("input", abi.encodeWithSelector(0x00000003, input));
-        (bool success,) = address(challenge).call(abi.encodeWithSelector(0x00000003, input));
-
-        assertTrue(success);
-        assertEq(nft.balanceOf(solution.owner()), 1);
-        assertTrue(nft.ownerOf(0) == solution.owner());
-
-        // Finish prank
-        vm.stopPrank();
-
-        // Solve again with a more optimized solution
-        // ==========================================
-
-        // Set msg.sender & tx.origin to beefbabe
-        vm.startPrank(oSolution.owner(), oSolution.owner());
-
-        // Create input with beefbabe's magic.
-        // Will need to be changed once DovesInTheWind.huff has more code above
-        // the magic_dest label, as the solution input's hash contains the desired jumpdest.
-        magic = 0x800000001060c983;
-        solAddr = address(oSolution);
-        assembly {
-            input := or(shl(0xC0, magic), solAddr)
-        }
-
-        // Call the challenge's third dispatch to get access to the wildcard logic.
-        emit log_named_bytes("input", abi.encodeWithSelector(0x00000003, input));
-        (success,) = address(challenge).call(abi.encodeWithSelector(0x00000003, input));
-
-        assertTrue(success);
-        assertEq(nft.balanceOf(oSolution.owner()), 2);
-        assertTrue(nft.ownerOf(1) == oSolution.owner());
-
-        // Finish prank
-        vm.stopPrank();
+        // Attempt second solution with an optimized solution contract
+        solve(oSolution.owner(), address(oSolution), 0x800000001060c983, 2);
     }
 
     function testFailSolveIncorrectMagic() public {
-        // Set msg.sender & tx.origin to beefbabe
-        vm.startPrank(solution.owner(), solution.owner());
-
-        // Create input with beefbabe's magic.
-        // Will need to be changed once DovesInTheWind.huff has more code above
-        // the magic_dest label, as the solution input's hash contains the desired jumpdest.
-        bytes32 input;
-        uint256 magic = 0x800000001060c982;
-        address solAddr = address(solution);
-        assembly {
-            input := or(shl(0xC0, magic), solAddr)
-        }
-
-        // Call the challenge's third dispatch to get access to the wildcard logic.
-        emit log_named_bytes("input", abi.encodeWithSelector(0x00000003, input));
-        (bool success,) = address(challenge).call(abi.encodeWithSelector(0x00000003, input));
-
-        assertTrue(success);
-        assertEq(nft.balanceOf(solution.owner()), 1);
-        assertTrue(nft.ownerOf(0) == solution.owner());
-
-        // Finish prank
-        vm.stopPrank();
+        // Attempt solution with incorrect magic (will fail)
+        solve(solution.owner(), address(solution), 0x800000001060c982, 1);
     }
 
     function testFailSolveLessOptimized() public {
-        // Set msg.sender & tx.origin to beefbabe
-        vm.startPrank(solution.owner(), solution.owner());
+        // Attempt first solution
+        solve(solution.owner(), address(solution), 0x800000001060c983, 1);
 
-        // Create input with beefbabe's magic.
-        // Will need to be changed once DovesInTheWind.huff has more code above
-        // the magic_dest label, as the solution input's hash contains the desired jumpdest.
-        bytes32 input;
-        uint256 magic = 0x800000001060c983;
-        address solAddr = address(solution);
-        assembly {
-            input := or(shl(0xC0, magic), solAddr)
-        }
-
-        // Call the challenge's third dispatch to get access to the wildcard logic.
-        emit log_named_bytes("input", abi.encodeWithSelector(0x00000003, input));
-        (bool success,) = address(challenge).call(abi.encodeWithSelector(0x00000003, input));
-
-        assertTrue(success);
-        assertEq(nft.balanceOf(solution.owner()), 1);
-        assertTrue(nft.ownerOf(0) == solution.owner());
-
-        // Finish prank
-        vm.stopPrank();
-
-        // Solve again with a more optimized solution
-        // ==========================================
-
-        // Set msg.sender & tx.origin to beefbabe
-        vm.startPrank(solution.owner(), solution.owner());
-
-        // Create input with beefbabe's magic.
-        // Will need to be changed once DovesInTheWind.huff has more code above
-        // the magic_dest label, as the solution input's hash contains the desired jumpdest.
-        magic = 0x800000001060c983;
-        solAddr = address(solution);
-        assembly {
-            input := or(shl(0xC0, magic), solAddr)
-        }
-
-        // Call the challenge's third dispatch to get access to the wildcard logic.
-        emit log_named_bytes("input", abi.encodeWithSelector(0x00000003, input));
-        (success,) = address(challenge).call(abi.encodeWithSelector(0x00000003, input));
-
-        assertTrue(success);
-        assertEq(nft.balanceOf(solution.owner()), 2);
-        assertTrue(nft.ownerOf(1) == solution.owner());
-
-        // Finish prank
-        vm.stopPrank();
+        // Attempt solution with the same amount of gas / bytecode size
+        solve(solution.owner(), address(solution), 0x800000001060c983, 2);
     }
 
     ////////////////////////////////////////////////////////////////
     //                      REWARD NFT TESTS                      //
     ////////////////////////////////////////////////////////////////
 
-    // Should fail because the Challenge contract is the owner.
+    // Should fail because the test contract is not the owner.
     function testFailTransferNFTOwnership() public {
         nft.transferOwnership(address(this));
     }
 
-    // Should fail because the Challenge contract is the owner.
+    // Should fail because the owner cannot be changed after it has been set
+    // to a contract.
+    function testFailTransferNFTOwnershipFromChallenge() public {
+        vm.prank(address(challenge));
+        nft.transferOwnership(address(this));
+    }
+
+    // Should fail because the test contract is not the owner of the NFT
+    // contract.
     function testFailMintNFT() public {
-        nft.mint(address(solution.owner()));
+        nft.mint(address(solution.owner()), 0, 0);
+    }
+
+    ////////////////////////////////////////////////////////////////
+    //                          HELPERS                           //
+    ////////////////////////////////////////////////////////////////
+
+    /// @notice Helper to submit a solution to the Challenge contract.
+    function solve(address from, address solution, uint256 magic, uint256 id) internal {
+        // Set msg.sender & tx.origin to `from`
+        vm.startPrank(from, from);
+
+        // Create input with 0xbeefbabe's magic.
+        // Will need to be changed once DovesInTheWind.huff has more code above
+        // the magic_dest label, as the solution input's hash contains the desired jumpdest.
+        bytes32 input;
+        assembly {
+            input := or(shl(0xC0, magic), solution)
+        }
+
+        // Call the challenge's third dispatch to get access to the wildcard logic.
+        (bool success,) = address(challenge).call(abi.encodeWithSelector(0x00000003, input));
+
+        // Assert that the call was a success.
+        assertTrue(success);
+
+        // Assert that we've received a reward NFT for our efforts
+        address owner = ISolution(solution).owner();
+        assertEq(nft.balanceOf(owner), id);
+        assertTrue(nft.ownerOf(id) == owner);
+
+        // Finish prank
+        vm.stopPrank();
     }
 }

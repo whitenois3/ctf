@@ -10,8 +10,6 @@
 
 #define function owner() view returns (address)
 
-#define event NewLeader(address indexed solver, uint256 score)
-
 ////////////////////////////////////////////////////////////////
 //                         CONSTANTS                          //
 ////////////////////////////////////////////////////////////////
@@ -36,7 +34,7 @@
 
 #define macro CONSTRUCTOR() = {
     // Set the high score to max int
-    0x00 not [HIGH_SCORE_SLOT] sstore
+    pc not [HIGH_SCORE_SLOT] sstore
 }
 
 #define macro MAIN() = {
@@ -76,9 +74,7 @@
     // The challenge before the challenge >:D
     magic_dest:
         [ADDRESS_MASK] and     // [solution_addr]
-
-        SOLVE()
-        stop
+        SOLVE() 
 
     fail:
         PANIC()
@@ -154,36 +150,28 @@
 
     // TODO: Subtract PUSH / SWAP / ASSERT gas for an accurate result.
     gas swap1 sub              // [gasUsed, codesize(solution)]
-    add                        // [newScore]
 
     // Assert that solution is valid
-    0x20 0x00 dup1             // [0x00, 0x00, 0x20, newScore]
-    returndatacopy             // [newScore]
-    0x00 mload                 // [solution, newScore]
-    // VALIDATE_SOLUTION()        // [newScore]
+    0x20 0x00 dup1             // [0x00, 0x00, 0x20, gasUsed, codesize(solution)]
+    returndatacopy             // [gasUsed, codesize(solution)]
+    0x00 mload                 // [solution, gasUsed, codesize(solution)]
+    // VALIDATE_SOLUTION()     // [gasUsed, codesize(solution)]
     pop
     
     // Assert that the new score is less than the old score
-    [HIGH_SCORE_SLOT] sload    // [prevScore, newScore]
+    [HIGH_SCORE_SLOT] sload    // [prevScore, gasUsed, codesize(solution)]
     // TODO: Verbose revert message on failure
-    dup2 lt iszero             // [newScore >= prevScore, newScore]
-    fail jumpi                 // [newScore]
+    dup3 dup3 add lt           // [newScore < prevScore, gasUsed, codesize(solution)]
+    ASSERT()                   // [gasUsed, codesize(solution)]
 
     // Mint Reward to msg.sender
     // TODO: Add logic in NFT to hold off on claiming until the end of the game.
     //       First solver gets their special edition NFT (id = 0) immediately.
-    caller                     // [sender, newScore]
+    caller                     // [sender, gasUsed, codesize(solution)]
     SAFE_MINT_NFT()            // [newScore]
 
-    // Update highest score
-    dup1 [HIGH_SCORE_SLOT]     // [HIGH_SCORE_SLOT, newScore, newScore]
-    sstore                     // [newScore]
-
-    // Emit event
-    caller 0x00 mstore         // [newScore]
-    0x20 mstore                // []
-    0x40 0x00 log0             // []
-
+    // Update highest (erm, lowest, ykwim) score and hault
+    [HIGH_SCORE_SLOT] sstore   // []
     stop
 
     // Return stack:              []
@@ -195,18 +183,25 @@
 
 /// @dev Used to mint a new Reward NFT
 #define macro SAFE_MINT_NFT() = takes (1) {
-    // Input stack:               [to]
+    // Input stack:               [to, gasUsed, codesize(solution)]
 
-    0x6a627842 0xE0 shl        // [0xE06a627842, to]
-    0x00 mstore                // [to]
-    0x04 mstore                // []
+    0x156e29f6 0xE0 shl        // [0x156e29f6..., to, gasUsed, codesize(solution)]
+    0x00 mstore                // [to, gasUsed, codesize(solution)]
+    0x04 mstore                // [gasUsed, codesize(solution)]
 
-    0x00 dup1 0x24 dup2 dup1   // [0x00, 0x00, 0x20, 0x00, 0x00]
-    [NFT_ADDR]                 // [NFT_ADDR, 0x00, 0x00, 0x24, 0x00, 0x00]
-    gas call                   // [success]
+    // Copy score onto stack for storage later
+    dup2 dup2 add              // [score, gasUsed, codesize(solution)]
+    swap2                      // [codesize(solution), gasUsed, score]
+
+    0x44 mstore                // [gasUsed, score]
+    0x24 mstore                // [score]
+
+    0x00 dup1 0x64 dup2 dup1   // [0x00, 0x00, 0x64, 0x00, 0x00, score]
+    [NFT_ADDR]                 // [NFT_ADDR, 0x00, 0x00, 0x64, 0x00, 0x00, score]
+    gas call                   // [success, score]
 
     // Revert if mint failed.
-    ASSERT()                   // []
+    ASSERT()                   // [score]
 }
 
 ////////////////////////////////////////////////////////////////
