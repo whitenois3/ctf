@@ -132,7 +132,6 @@
     // "solve(uint)" for now
     __FUNC_SIG("solve(uint256)") 0x00 mstore
 
-    // TODO: Generate address-specific problem input & store in mem @ 0x20
     GEN_SEED() dup1            // [challenge_input, challenge_input, solution_addr]
     0x20 mstore                // [challenge_input, solution_addr]
     swap1                      // [solution_addr, challenge_input]
@@ -166,9 +165,7 @@
     dup3 dup3 add lt           // [newScore < prevScore, gasUsed, codesize(solution), challenge_input]
     ASSERT()                   // [gasUsed, codesize(solution), challenge_input]
 
-    // Mint Reward to msg.sender
-    // TODO: Add logic in NFT to hold off on claiming until the end of the game.
-    //       First solver gets their special edition NFT (id = 0) immediately.
+    // Submit to NFT contract
     caller                     // [sender, gasUsed, codesize(solution), challenge_input]
     SUBMIT()                   // [newScore, challenge_input]
 
