@@ -49,7 +49,12 @@ contract RewardNFT is ERC721 {
     /// @notice Mints a new NFT to the given address
     /// @dev Only callable by the owner of this contract (DovesInTheWind.huff)
     function mint(address _to) external onlyOwner {
-        _safeMint(_to, currentId++);
+        _safeMint(_to, currentId);
+
+        // It is unrealistic that this will ever overflow.
+        unchecked {
+            ++currentId;
+        }
     }
 
     function transferOwnership(address _newOwner) external onlyOwner {
