@@ -1,3 +1,7 @@
+/// @title Doves in the Wind
+/// @notice Whitenoise Challenge #1
+/// @author clabby <https://github.com/clabby>
+
 #include "huffmate/utils/Errors.huff"
 #include "huffmate/utils/JumpTableUtil.huff"
 #include "huffmate/utils/LibBit.huff"
@@ -38,24 +42,19 @@
 }
 
 #define macro MAIN() = {
+    // Do not allow other contracts to call this contract.
+    caller extcodesize iszero
+    ASSERT()
+
     0x04 calldataload          // [cd]
 
     // Will revert if an invalid dispatch table index is passed as the
     // selector.
     __tablestart(DISPATCH)     // [tablestart, cd]
     0x00 calldataload 0xE0 shr // [sig, tablestart, cd]
-
-    // TODO: Enforce table size limit so that people can't use a 2 byte
-    //       value after the table as their dispatch jumpdest.
-    //       If the jumpdest of `WILDCARD` doesn't show up in the bytecode
-    //       after the table, it should be safe, but there could still
-    //       *potentially* be an unintended exploit if we don't introduce
-    //       this check.
-    // 0x05 dup2 lt ASSERT()      // [sig, tablestart, cd]
-
+    0x05 dup2 lt ASSERT()      // [sig, tablestart, cd]
     RETRIEVE_FROM_PACKED_JT()  // [jumpdest, cd]
     jump                       // [cd]
-
 
     // DISPATCH LOGIC
     // ==============
@@ -95,7 +94,7 @@
     0x00 calldataload          // [cd]
     [RP_FOUR_BYTE_MASK] and    // [sig]
     0x00 mstore                // []
-    origin 0x60 shl            // [origin << 0x60]
+    caller 0x60 shl            // [origin << 0x60]
     0x04 mstore                // []
     0x04 calldataload          // [cd]
     [RP_EIGHT_BYTE_MASK] and   // [cd & 0xFFFFFFFFFFFFFFFF...]
@@ -105,6 +104,8 @@
     [TWO_BYTE_MASK] and        // [hash & 0xFFFF, hash]
     0xD073 eq                  // [0xD073 == (hash & 0xFFFF), hash]
     ASSERT()                   // [hash]
+    // TODO: Potentially check that the dest is less than a certain code offset
+    // SEE: `VALIDATE_SOLUTION`
     0xF0 shr jump              // []
 }
 
@@ -132,49 +133,48 @@
     __FUNC_SIG("solve(uint256)") 0x00 mstore
 
     // TODO: Generate address-specific problem input & store in mem @ 0x20
-    GEN_CHALLENGE()            // [challenge_input, solution_addr]
-    0x20 mstore                // [solution_addr]
+    GEN_SEED() dup1            // [challenge_input, challenge_input, solution_addr]
+    0x20 mstore                // [challenge_input, solution_addr]
+    swap1                      // [solution_addr, challenge_input]
     
-    dup1 extcodesize           // [codesize(solution), solution_addr]
-    swap1                      // [solution_addr, codesize(solution)]
-    gas                        // [gasBefore, solution_addr, codesize(solution)]
-    swap1                      // [solution_addr, gasBefore, codesize(solution)]
+    dup1 extcodesize           // [codesize(solution), solution_addr, challenge_input]
+    swap1                      // [solution_addr, codesize(solution), challenge_input]
+    gas                        // [gasBefore, solution_addr, codesize(solution), challenge_input]
+    swap1                      // [solution_addr, gasBefore, codesize(solution), challenge_input]
 
     // Perform call to solution contract with the generated input
-    0x00 0x24 0x1c 0x00        // [0x00, 0x1c, 0x24, 0x00, solution_addr, gasBefore, codesize(solution)]
-    0x20 swap5                 // [solution_addr, 0x00, 0x1c, 0x24, 0x00, 0x20, gasBefore, codesize(solution)]
-    gas call                   // [success, gasBefore, codesize(solution)]
+    0x00 0x24 0x1c 0x00        // [0x00, 0x1c, 0x24, 0x00, solution_addr, gasBefore, codesize(solution), challenge_input]
+    0x20 swap5                 // [solution_addr, 0x00, 0x1c, 0x24, 0x00, 0x20, gasBefore, codesize(solution), challenge_input]
+    gas call                   // [success, gasBefore, codesize(solution), challenge_input]
 
     // Ensure call to solution contract succeeded
-    ASSERT()                   // [gasBefore, codesize(solution)]
+    ASSERT()                   // [gasBefore, codesize(solution), challenge_input]
 
     // TODO: Subtract PUSH / SWAP / ASSERT gas for an accurate result.
-    gas swap1 sub              // [gasUsed, codesize(solution)]
+    gas swap1 sub              // [gasUsed, codesize(solution), challenge_input]
 
     // Assert that solution is valid
-    0x20 0x00 dup1             // [0x00, 0x00, 0x20, gasUsed, codesize(solution)]
-    returndatacopy             // [gasUsed, codesize(solution)]
-    0x00 mload                 // [solution, gasUsed, codesize(solution)]
-    // VALIDATE_SOLUTION()     // [gasUsed, codesize(solution)]
-    pop
+    0x20 0x00 dup1             // [0x00, 0x00, 0x20, gasUsed, codesize(solution), challenge_input]
+    returndatacopy             // [gasUsed, codesize(solution), challenge_input]
+    0x00 mload                 // [solution, gasUsed, codesize(solution), challenge_input]
+    dup4                       // [challenge_input, solution, gasUsed, codesize(solution), challenge_input]
+    VALIDATE_SOLUTION()        // [gasUsed, codesize(solution), challenge_input]
     
     // Assert that the new score is less than the old score
-    [HIGH_SCORE_SLOT] sload    // [prevScore, gasUsed, codesize(solution)]
+    [HIGH_SCORE_SLOT] sload    // [prevScore, gasUsed, codesize(solution), challenge_input]
     // TODO: Verbose revert message on failure
-    dup3 dup3 add lt           // [newScore < prevScore, gasUsed, codesize(solution)]
-    ASSERT()                   // [gasUsed, codesize(solution)]
+    dup3 dup3 add lt           // [newScore < prevScore, gasUsed, codesize(solution), challenge_input]
+    ASSERT()                   // [gasUsed, codesize(solution), challenge_input]
 
     // Mint Reward to msg.sender
     // TODO: Add logic in NFT to hold off on claiming until the end of the game.
     //       First solver gets their special edition NFT (id = 0) immediately.
-    caller                     // [sender, gasUsed, codesize(solution)]
-    SAFE_MINT_NFT()            // [newScore]
+    caller                     // [sender, gasUsed, codesize(solution), challenge_input]
+    SAFE_MINT_NFT()            // [newScore, challenge_input]
 
     // Update highest (erm, lowest, ykwim) score and hault
-    [HIGH_SCORE_SLOT] sstore   // []
+    [HIGH_SCORE_SLOT] sstore   // [challenge_input]
     stop
-
-    // Return stack:              []
 }
 
 ////////////////////////////////////////////////////////////////
@@ -229,14 +229,52 @@
 }
 
 /// @dev Generates a challenge specific to the solution_addr
-#define macro GEN_CHALLENGE() = takes (1) returns (1) {
-    0x01 // TODO
+#define macro GEN_SEED() = takes (0) returns (1) {
+    // This should be fairly difficult to exploit on arbitrum
+    // due to the single sequencer. If someone manages it,
+    // all power to them.
+
+    number 0x20 mstore         // []
+    dup1 blockhash 0x40 mstore // []
+    caller 0x60 mstore         // []
+    0x60 0x20 sha3             // [random_seed]
 }
 
 /// @dev Checks if a solution to the optimization challenge is valid
-#define macro VALIDATE_SOLUTION() = takes (1) returns (1) {
-    // TODO
-}
+#define macro VALIDATE_SOLUTION() = takes (2) {
+    // Input stack:               [word, even_sum]
+
+    // Intentionally not optimal- don't want to give a good solution
+    // away in the runtime code ;)
+
+    // TODO: We don't want people jumping to the `validate_loop` dest
+    // from `WILDCARD`. Should be safe because this will cause stack
+    // underflow with the only item on the stack being the first word
+    // of calldata (cd[4:36]), but need to triple check.
+
+    0x00 dup1 swap2            // [word, accumulator, index, even_sum]
+    validate_loop:
+        dup1 0xFF and          // [word & 0xFF, word, accumulator, index, even_sum]
+        0x02 dup2              // [word & 0xFF, 0x02, word & 0xFF, word, accumulator, index, even_sum]
+        mod iszero             // [(word & 0xFF) % 2 == 0, word & 0xFF, word, accumulator, index, even_sum]
+        mul                    // [((word & 0xFF % 2) == 0) * (word & 0xFF), word, accumulator, index, even_sum]
+
+        // Increase accumulator
+        dup3 add               // [accumulator + ((word & 0xFF % 2) == 0) * (word & 0xFF), word, accumulator, index, even_sum]
+        swap2 pop              // [word, accumulator, index, even_sum]
+
+        // Increase index by 1
+        dup3 0x01 add          // [index + 0x01, word, accumulator, index, even_sum]
+        swap3 pop              // [word, accumulator, index, even_sum]
+        0x08 shr               // [word >> 0x08, accumulator, index, even_sum]
+
+        0x20 dup4 lt           // [index < 0x20, word, accumulator, index, even_sum]
+        validate_loop jumpi
+    
+    pop swap1 pop              // [accumulator, even_sum]
+    eq                         // [accumulator == even_sum]
+    ASSERT()                   // []
+}       
 
 ////////////////////////////////////////////////////////////////
 //                         HONEYPOTS                          //

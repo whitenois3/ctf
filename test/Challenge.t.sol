@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import {RewardNFT} from "../src/RewardNFT.sol";
+import {WhitenoiseNFT} from "../src/WhitenoiseNFT.sol";
 import {Test} from "forge-std/Test.sol";
 import {HuffDeployer} from "foundry-huff/HuffDeployer.sol";
 
@@ -18,12 +18,21 @@ contract Solution is ISolution {
         return 0x00000000000000000000000000000000bEefbabe;
     }
 
-    function solve(uint256) external returns (uint256) {
-        uint256 a = 0x100;
-        uint256 b = 0x100;
-        a = a - b + a;
-        a = a >> 0x08;
-        return a; // TODO
+    /// @dev Sum all even bytes in received word
+    function solve(uint256 word) external returns (uint256) {
+        uint acc;
+
+        for (uint i = 0; i < 32; i++) {
+            uint masked = word & 0xFF;
+
+            if (masked % 2 == 0) {
+                acc += masked;
+            }
+
+            word >>= 0x08;
+        }
+        
+        return acc;
     }
 }
 
@@ -33,14 +42,32 @@ contract OptimizedSolution is ISolution {
         return 0x00000000000000000000000000000000bEefbabe;
     }
 
-    function solve(uint256) external returns (uint256) {
-        return 1; // TODO
+    /// @dev Hard-code answer to 1958 on local anvil testnet
+    function solve(uint256 word) external returns (uint256) {
+        uint acc;
+        uint masked;
+
+        assembly {
+            for { let i := 0 } lt(i, 0x20) { i := add(i, 0x01) } {
+                masked := and(word, 0xFF)
+
+                if iszero(mod(masked, 0x02)) {
+                    acc := add(acc, masked)
+                }
+
+                word := shr(0x08, word)
+            }
+        }
+        
+        return acc;
     }
 }
 
 /// @notice Challenge Tests
 contract ChallengeTest is Test {
-    RewardNFT public nft;
+    uint constant BEEFBABE_MAGIC = 0x400000004cf81335;
+
+    WhitenoiseNFT public nft;
     address public challenge;
 
     Solution public solution;
@@ -51,7 +78,7 @@ contract ChallengeTest is Test {
         vm.startPrank(address(0xDEADBEEF));
 
         // Deploy RewardNFT and `DovesInTheWind` Challenge
-        nft = new RewardNFT();
+        nft = new WhitenoiseNFT();
         challenge = HuffDeployer.config().with_addr_constant("NFT_ADDR", address(nft)).deploy("DovesInTheWind");
 
         // Update owner to challenge contract address
@@ -69,25 +96,36 @@ contract ChallengeTest is Test {
     //                      CHALLENGE TESTS                       //
     ////////////////////////////////////////////////////////////////
 
+    function testFailCallChallengeFromContract() public {
+        (bool success,) = address(challenge).call(abi.encodeWithSelector(0, uint256(1)));
+        assertTrue(success);
+    }
+
+    function testCallChallengeFromEOA() public {
+        vm.prank(solution.owner());
+        (bool success,) = address(challenge).call(abi.encodeWithSelector(0, uint256(1)));
+        assertTrue(success);
+    }
+
     function testSolve() public {
         // Attempt first solution
-        solve(solution.owner(), address(solution), 0x800000001060c983, 1);
+        solve(solution.owner(), address(solution), BEEFBABE_MAGIC, 1);
 
         // Attempt second solution with an optimized solution contract
-        solve(oSolution.owner(), address(oSolution), 0x800000001060c983, 2);
+        solve(oSolution.owner(), address(oSolution), BEEFBABE_MAGIC, 2);
     }
 
     function testFailSolveIncorrectMagic() public {
         // Attempt solution with incorrect magic (will fail)
-        solve(solution.owner(), address(solution), 0x800000001060c982, 1);
+        solve(solution.owner(), address(solution), BEEFBABE_MAGIC - 1, 1);
     }
 
     function testFailSolveLessOptimized() public {
         // Attempt first solution
-        solve(solution.owner(), address(solution), 0x800000001060c983, 1);
+        solve(solution.owner(), address(solution), BEEFBABE_MAGIC, 1);
 
         // Attempt solution with the same amount of gas / bytecode size
-        solve(solution.owner(), address(solution), 0x800000001060c983, 2);
+        solve(solution.owner(), address(solution), BEEFBABE_MAGIC, 2);
     }
 
     ////////////////////////////////////////////////////////////////

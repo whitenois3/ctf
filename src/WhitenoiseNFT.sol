@@ -1,10 +1,11 @@
 pragma solidity ^0.8.17;
 
 import {ERC721} from "solmate/tokens/ERC721.sol";
+import {ReentrancyGuard} from "solmate/utils/ReentrancyGuard.sol";
 
-/// @title Reward NFT
-///
-contract RewardNFT is ERC721 {
+/// @title Whitenoise NFT
+/// @author clabby <https://github.com/clabby>
+contract WhitenoiseNFT is ERC721, ReentrancyGuard {
     ////////////////////////////////////////////////////////////////
     //                         VARIABLES                          //
     ////////////////////////////////////////////////////////////////
@@ -96,7 +97,7 @@ contract RewardNFT is ERC721 {
 
     /// @notice Mints a new NFT to the given address.
     /// @dev Only callable by the owner of this contract (DovesInTheWind.huff)
-    function mint(address _to, uint256 gasUsed, uint256 codeSize) external onlyOwner {
+    function mint(address _to, uint256 gasUsed, uint256 codeSize) external onlyOwner nonReentrant {
         uint256 _currentId = currentId;
 
         // Mint the solver's NFT.
