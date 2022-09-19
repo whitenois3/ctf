@@ -7,9 +7,9 @@ import {HuffDeployer} from "foundry-huff/HuffDeployer.sol";
 
 /// @notice Solution interface
 interface ISolution {
-    function owner() external virtual returns (address);
+    function owner() external view returns (address);
 
-    function solve(uint256) external virtual returns (uint256);
+    function solve(uint256) external returns (uint256);
 }
 
 /// @notice An unoptimized solution

@@ -60,14 +60,12 @@ contract WhitenoiseNFT is ERC721, ReentrancyGuard {
     ///         modifier is called by an address that is not the owner.
     error OnlyOwner();
 
-    /// @notice Error thrown when a function protected by the
-    ///         `onlyDuringChallenge` modifier is called after the
-    ///         challenge has concluded.
+    /// @notice Error thrown when a function that can only be executed
+    ///         during the challenge is executed afterwards.
     error OnlyDuringChallenge();
 
-    /// @notice Error thrown when a function protected by the
-    ///         `onlyAfterChallenge` modifier is called before the
-    ///         challenge has concluded.
+    /// @notice Error thrown when a function that can only be executed
+    ///         after the challenge has completed is executed beforehand.
     error OnlyAfterChallenge();
 
     /// @notice Error thrown when an EOA who is not the Chad attempts
@@ -99,27 +97,11 @@ contract WhitenoiseNFT is ERC721, ReentrancyGuard {
         _;
     }
 
-    /// @notice Asserts that the challenge has not yet completed.
-    modifier onlyDuringChallenge() {
-        if (block.timestamp >= END_TIME) {
-            revert OnlyDuringChallenge();
-        }
-        _;
-    }
-
-    /// @notice Asserts that the challenge has completed.
-    modifier onlyAfterChallenge() {
-        if (block.timestamp < END_TIME) {
-            revert OnlyAfterChallenge();
-        }
-        _;
-    }
-
     ////////////////////////////////////////////////////////////////
     //                        CONSTRUCTOR                         //
     ////////////////////////////////////////////////////////////////
 
-    constructor() ERC721("Doves in the Wind", "WNC1") {
+    constructor() ERC721("Doves in the Wind", "DOVE") {
         END_TIME = block.timestamp + 21 days;
 
         bool creatorIsEOA;
@@ -180,12 +162,15 @@ contract WhitenoiseNFT is ERC721, ReentrancyGuard {
     }
 
     /// @notice Claim Optimizer NFT after the game has concluded.
-    function claim() external onlyAfterChallenge {
-        Chad memory chad = theChad();
+    function claim() external {
+        // Assert that the challenge has concluded.
+        if (block.timestamp < END_TIME) {
+            revert OnlyAfterChallenge();
+        }
 
+        Chad memory chad = theChad();
         if (chad.solver == msg.sender) {
-            uint256 _currentId = currentId;
-            _mintyFresh(msg.sender, _currentId);
+            _mintyFresh(msg.sender, currentId);
         } else {
             revert NotTheChad();
         }
@@ -200,9 +185,13 @@ contract WhitenoiseNFT is ERC721, ReentrancyGuard {
     function submit(address _solver, uint256 gasUsed, uint256 codeSize)
         external
         onlyOwner
-        onlyDuringChallenge
         nonReentrant
     {
+        // Assert that the the challenge is not over
+        if (block.timestamp >= END_TIME) {
+            revert OnlyDuringChallenge();
+        }
+
         uint256 _currentId = currentId;
 
         // If this is the first solve, emit a `FirstSolve` event with their address
