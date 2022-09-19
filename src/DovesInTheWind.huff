@@ -310,14 +310,15 @@
     // Input stack:               [cd]
     POP_COUNT()
 
-    // Minimal bytecode to return the caller's address
-    0x600480600E6000396000F3306000F3
-    0x00 mstore                 // []
-    0x0f                        // [size]
-    0x00                        // [offset, size]
-    0x00                        // [value, offset, size]
-    create                      // [deployed_addr]
+    // // Minimal bytecode to return the caller's address
+    // 0x600480600E6000396000F3306000F3
+    // 0x00 mstore                 // []
+    // 0x0f                        // [size]
+    // 0x00                        // [offset, size]
+    // 0x00                        // [value, offset, size]
+    // create                      // [deployed_addr]
 
+    // Return nothing
     0x00 mstore                // []
     0x20 0x00 return
 }

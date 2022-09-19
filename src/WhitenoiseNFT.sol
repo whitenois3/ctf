@@ -1,10 +1,13 @@
 pragma solidity ^0.8.17;
 
-import {ERC721} from "solmate/tokens/ERC721.sol";
-import {ReentrancyGuard} from "solmate/utils/ReentrancyGuard.sol";
+import { Base64 } from "./utils/Base64.sol";
+
+import { ERC721 } from "solmate/tokens/ERC721.sol";
+import { ReentrancyGuard } from "solmate/utils/ReentrancyGuard.sol";
 
 /// @title Whitenoise Challenge NFT
 /// @author clabby <https://github.com/clabby>
+/// @author asnared <https://github.com/abigger87>
 /// ⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
 /// ⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠀⠈⠻⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
 /// ⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⢷⣤⡀⠀⠉⠛⠿⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
@@ -75,6 +78,9 @@ contract WhitenoiseNFT is ERC721, ReentrancyGuard {
     /// @notice Error thrown when the max NFT supply has been reached.
     error MaxSupply();
 
+    /// @notice Error thrown if transfer function is called.
+    error Soulbound();
+
     ////////////////////////////////////////////////////////////////
     //                           EVENTS                           //
     ////////////////////////////////////////////////////////////////
@@ -129,21 +135,45 @@ contract WhitenoiseNFT is ERC721, ReentrancyGuard {
 
     /// @notice Get the token URI of a token ID
     function tokenURI(uint256 id) public pure override returns (string memory) {
+        string memory name = "Optimizer";
+        string memory description = "A Soulbound token demonstrating a mastery in optimization and evm wizardry";
+        string memory img_url = "ipfs://QmT5v6ioQMUHgsYXTXL8oAaVAitxqK6NE7Q5bacUzTVgbA";
+
         // Check for creator special edition
         if (id == 0) {
-            // TODO
-            return "ipfs://bafkreihxgzplo7ociu4zhdt2l6ivomrbihe5dfvc4m6wyvoshn6yne4afy";
+            name = "Deployer";
+            description = "Special Edition for the WhitenoiseNFT Deployer";
+            img_url = "ipfs://QmR82jC87jEtgJFxhbUBThJCcavDCwut21VD3TvHSXsp43";
         }
 
         // Check for first solver special edition
         if (id == 1) {
-            // TODO
-            return "ipfs://bafkreifhqz35kbftonyp52kikkdwhq5cfxs5czynbzny5gy2qkbtfs2lwu";
+            name = "Chad";
+            description = "Special Edition Token for the first solver";
+            img_url = "ipfs://QmT2vXZ52LTFfXPn6YAffHsWik5bYRFrp744rqbCaKy18i";
         }
 
-        // Optimizer challenge editions
-        // TODO
-        return "ipfs://bafkreibgjyqj7jd24omupfqskkd7xuqr2rljsqwm6ctjaobrofg356fp5e";
+        // Base64 Encode our JSON Metadata
+        string memory json = Base64.encode(
+            bytes(
+                string(
+                    abi.encodePacked(
+                        '{"name": "',
+                        name,
+                        '", "description": "',
+                        description,
+                        '", "image": "',
+                        img_url,
+                        '", "external_url": "https://ctf.whitenoise.rs"}'
+                    )
+                )
+            )
+        );
+
+        // Prepend data:application/json;base64 to define the base64 encoded data
+        return string(
+            abi.encodePacked("data:application/json;base64,", json)
+        );
     }
 
     /// @notice Returns the current Chad.
@@ -240,6 +270,11 @@ contract WhitenoiseNFT is ERC721, ReentrancyGuard {
     ////////////////////////////////////////////////////////////////
     //                          INTERNAL                          //
     ////////////////////////////////////////////////////////////////
+
+    // Make the NFT Soulbound by overriding transfer functionality
+    function transferFrom(address, address, uint256) public override {
+        revert Soulbound();
+    }
 
     function _mintyFresh(address _to, uint256 _currentId) internal {
         if (currentId > 2) {
