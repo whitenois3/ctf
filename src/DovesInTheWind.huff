@@ -13,6 +13,8 @@
 ////////////////////////////////////////////////////////////////
 
 #define function owner() view returns (address)
+#define function submit(address, uint256, uint256) nonpayable returns (address)
+#define function solve(uint256) nonpayable returns (address)
 
 ////////////////////////////////////////////////////////////////
 //                         CONSTANTS                          //
@@ -104,8 +106,6 @@
     [TWO_BYTE_MASK] and        // [hash & 0xFFFF, hash]
     0xD073 eq                  // [0xD073 == (hash & 0xFFFF), hash]
     ASSERT()                   // [hash]
-    // TODO: Potentially check that the dest is less than a certain code offset
-    // SEE: `VALIDATE_SOLUTION`
     0xF0 shr jump              // []
 }
 
@@ -127,10 +127,8 @@
     GET_OWNER() origin eq      // [solution_owner == tx.origin, 0x15, "Solution is not yours", solution_addr]
     REQUIRE()                  // [solution_addr]
 
-    // Store function selector in memory @ 0x00
-    // TODO: Use a selector that is not on 4byte / eth sig DB
-    // "solve(uint)" for now
-    __FUNC_SIG("solve(uint256)") 0x00 mstore
+    // Store "solve" function selector in memory @ 0x00
+    __FUNC_SIG(solve) 0x00 mstore
 
     GEN_SEED() dup1            // [challenge_input, challenge_input, solution_addr]
     0x20 mstore                // [challenge_input, solution_addr]
@@ -161,7 +159,6 @@
     
     // Assert that the new score is less than the old score
     [HIGH_SCORE_SLOT] sload    // [prevScore, gasUsed, codesize(solution), challenge_input]
-    // TODO: Verbose revert message on failure
     dup3 dup3 add lt           // [newScore < prevScore, gasUsed, codesize(solution), challenge_input]
     ASSERT()                   // [gasUsed, codesize(solution), challenge_input]
 
@@ -182,7 +179,8 @@
 #define macro SUBMIT() = takes (1) {
     // Input stack:               [to, gasUsed, codesize(solution)]
 
-    0xb57c0be4 0xE0 shl        // [0xb57c0be4..., to, gasUsed, codesize(solution)]
+    __FUNC_SIG(submit)
+    0xE0 shl                   // [0xb57c0be4..., to, gasUsed, codesize(solution)]
     0x00 mstore                // [to, gasUsed, codesize(solution)]
     0x04 mstore                // [gasUsed, codesize(solution)]
 
@@ -243,11 +241,6 @@
 
     // Intentionally not optimal- don't want to give a good solution
     // away in the runtime code ;)
-
-    // TODO: We don't want people jumping to the `validate_loop` dest
-    // from `WILDCARD`. Should be safe because this will cause stack
-    // underflow with the only item on the stack being the first word
-    // of calldata (cd[4:36]), but need to triple check.
 
     0x00 dup1 swap2            // [word, accumulator, index, even_sum]
     validate_loop:

@@ -146,7 +146,7 @@ contract WhitenoiseNFT is ERC721, ReentrancyGuard {
     ////////////////////////////////////////////////////////////////
 
     /// @notice Get the token URI of a token ID
-    function tokenURI(uint256 id) public view override returns (string memory) {
+    function tokenURI(uint256 id) public pure override returns (string memory) {
         // Check for creator special edition
         if (id == 0) {
             // TODO
