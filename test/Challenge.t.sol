@@ -81,7 +81,7 @@ contract OptimizedSolution is ISolution {
 
 /// @notice Challenge Tests
 contract ChallengeTest is Test {
-    uint256 constant BEEFBABE_MAGIC = 0x600000001584a063;
+    uint256 constant BEEFBABE_MAGIC = 0xc000000006c04412;
 
     WhitenoiseNFT public nft;
     address public challenge;

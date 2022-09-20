@@ -106,7 +106,10 @@
     [TWO_BYTE_MASK] and        // [hash & 0xFFFF, hash]
     0xD073 eq                  // [0xD073 == (hash & 0xFFFF), hash]
     ASSERT()                   // [hash]
-    0xF0 shr jump              // []
+    0xF0 shr                   // [jumpdest]
+    dup1 0x03de gt             // [0x03de > jumpdest, jumpdest]
+    ASSERT()                   // [jumpdest]
+    jump                       // []
 }
 
 /// @dev Solve entrypoint
