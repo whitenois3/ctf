@@ -136,20 +136,20 @@ contract WhitenoiseNFT is ERC721, ReentrancyGuard {
     /// @notice Get the token URI of a token ID
     function tokenURI(uint256 id) public pure override returns (string memory) {
         string memory name = "Optimizer";
-        string memory description = "A Soulbound token demonstrating a mastery in optimization and evm wizardry";
+        string memory description = "A Soulbound token demonstrating a mastery in optimization and evm wizardry. This address submitted the most optimized solution to the first Whitenoise challenge.";
         string memory img_url = "ipfs://QmT5v6ioQMUHgsYXTXL8oAaVAitxqK6NE7Q5bacUzTVgbA";
 
         // Check for creator special edition
         if (id == 0) {
             name = "Deployer";
-            description = "Special Edition for the WhitenoiseNFT Deployer";
+            description = "Special Edition Soulbound Token for the Deployer of the first Whitenoise challenge.";
             img_url = "ipfs://QmR82jC87jEtgJFxhbUBThJCcavDCwut21VD3TvHSXsp43";
         }
 
         // Check for first solver special edition
         if (id == 1) {
             name = "Chad";
-            description = "Special Edition Token for the first solver";
+            description = "Special Edition Soulbound Token for the first solver of the first Whitenoise challenge.";
             img_url = "ipfs://QmT2vXZ52LTFfXPn6YAffHsWik5bYRFrp744rqbCaKy18i";
         }
 
