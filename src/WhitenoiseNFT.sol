@@ -48,6 +48,7 @@ contract WhitenoiseNFT is ERC721, ReentrancyGuard {
     //                          STRUCTS                           //
     ////////////////////////////////////////////////////////////////
 
+    /// @notice Represents a Chad who solved the challenge.
     struct Chad {
         address solver;
         uint128 score;
@@ -71,7 +72,7 @@ contract WhitenoiseNFT is ERC721, ReentrancyGuard {
     ///         after the challenge has completed is executed beforehand.
     error OnlyAfterChallenge();
 
-    /// @notice Error thrown when an EOA who is not the Chad attempts
+    /// @notice Error thrown when an EOA who is not the current Chad attempts
     ///         to claim the Optimizer NFT after the Challenge has concluded.
     error NotTheChad();
 

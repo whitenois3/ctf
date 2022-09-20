@@ -86,7 +86,7 @@
 /// hash that satisfies the constraints and causes this macro to jump to
 /// the `SOLVE` entrypoint.
 ///
-/// Includes the function selector, tx.origin address, and cd[4:12]
+/// Includes the function selector, msg.sender address, and cd[4:12]
 /// in the hash input.
 ///
 /// 32 bits in total need to be brute forced:
@@ -96,7 +96,7 @@
     0x00 calldataload          // [cd]
     [RP_FOUR_BYTE_MASK] and    // [sig]
     0x00 mstore                // []
-    caller 0x60 shl            // [origin << 0x60]
+    caller 0x60 shl            // [msg.sender << 0x60]
     0x04 mstore                // []
     0x04 calldataload          // [cd]
     [RP_EIGHT_BYTE_MASK] and   // [cd & 0xFFFFFFFFFFFFFFFF...]
@@ -124,7 +124,7 @@
     __RIGHTPAD(0x536f6c7574696f6e206973206e6f7420796f757273)
     0x15                       // [0x15, "Solution is not yours", solution_addr]
     dup3                       // [solution_addr, 0x15, "Solution is not yours", solution_addr]
-    GET_OWNER() origin eq      // [solution_owner == tx.origin, 0x15, "Solution is not yours", solution_addr]
+    GET_OWNER() caller eq      // [solution_owner == msg.sender, 0x15, "Solution is not yours", solution_addr]
     REQUIRE()                  // [solution_addr]
 
     // Store "solve" function selector in memory @ 0x00
