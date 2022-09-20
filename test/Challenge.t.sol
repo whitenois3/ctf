@@ -20,19 +20,26 @@ contract Solution is ISolution {
 
     /// @dev Sum all even bytes in received word
     function solve(uint256 word) external returns (uint256) {
-        uint256 acc;
+        uint evenAcc;
+        uint oddAcc;
 
         for (uint256 i = 0; i < 32; i++) {
             uint256 masked = word & 0xFF;
 
             if (masked % 2 == 0) {
-                acc += masked;
+                evenAcc += masked;
+            } else {
+                oddAcc += masked;
             }
 
             word >>= 0x08;
         }
 
-        return acc;
+        uint256 ret;
+        assembly {
+            ret := or(shl(0x80, evenAcc), oddAcc)
+        }
+        return ret;
     }
 }
 
@@ -44,26 +51,37 @@ contract OptimizedSolution is ISolution {
 
     /// @dev Hard-code answer to 1958 on local anvil testnet
     function solve(uint256 word) external returns (uint256) {
-        uint256 acc;
+        uint256 evenAcc;
+        uint256 oddAcc;
         uint256 masked;
+        uint256 res;
 
         assembly {
             for { let i := 0 } lt(i, 0x20) { i := add(i, 0x01) } {
                 masked := and(word, 0xFF)
+                let even := iszero(mod(masked, 0x02))
 
-                if iszero(mod(masked, 0x02)) { acc := add(acc, masked) }
+                if even {
+                    evenAcc := add(evenAcc, masked)
+                }
+                
+                if iszero(even) {
+                    oddAcc := add(oddAcc, masked)
+                }
 
                 word := shr(0x08, word)
             }
+
+            res := or(shl(0x80, evenAcc), oddAcc)
         }
 
-        return acc;
+        return res;
     }
 }
 
 /// @notice Challenge Tests
 contract ChallengeTest is Test {
-    uint256 constant BEEFBABE_MAGIC = 0x400000004cf81335;
+    uint256 constant BEEFBABE_MAGIC = 0x600000001584a063;
 
     WhitenoiseNFT public nft;
     address public challenge;
@@ -108,11 +126,11 @@ contract ChallengeTest is Test {
         address owner = ISolution(solution).owner();
         assertEq(nft.balanceOf(owner), 1);
         assertTrue(nft.ownerOf(1) == owner);
-        assertIsTheChad(solution.owner(), 9008);
+        assertIsTheChad(solution.owner(), 10665);
 
         // Attempt second solution with an optimized solution contract
         solve(oSolution.owner(), address(oSolution), BEEFBABE_MAGIC);
-        assertIsTheChad(oSolution.owner(), 4081);
+        assertIsTheChad(oSolution.owner(), 5239);
     }
 
     function testFailCallChallengeFromContract() public {
@@ -140,7 +158,7 @@ contract ChallengeTest is Test {
         address owner = ISolution(solution).owner();
         assertEq(nft.balanceOf(owner), 1);
         assertTrue(nft.ownerOf(1) == owner);
-        assertIsTheChad(solution.owner(), 9008);
+        assertIsTheChad(solution.owner(), 10665);
 
         // Attempt solution with the same amount of gas / bytecode size
         solve(solution.owner(), address(solution), BEEFBABE_MAGIC);
@@ -158,7 +176,7 @@ contract ChallengeTest is Test {
         address owner = ISolution(solution).owner();
         assertEq(nft.balanceOf(owner), 1);
         assertTrue(nft.ownerOf(1) == owner);
-        assertIsTheChad(solution.owner(), 9008);
+        assertIsTheChad(solution.owner(), 10665);
 
         vm.warp(block.timestamp + 21 days + 1 seconds);
         vm.prank(solution.owner());
@@ -177,7 +195,7 @@ contract ChallengeTest is Test {
         address owner = ISolution(solution).owner();
         assertEq(nft.balanceOf(owner), 1);
         assertTrue(nft.ownerOf(1) == owner);
-        assertIsTheChad(solution.owner(), 9008);
+        assertIsTheChad(solution.owner(), 10665);
 
         vm.warp(block.timestamp + 21 days + 1 seconds);
         vm.prank(solution.owner());
@@ -193,7 +211,7 @@ contract ChallengeTest is Test {
         address owner = ISolution(solution).owner();
         assertEq(nft.balanceOf(owner), 1);
         assertTrue(nft.ownerOf(1) == owner);
-        assertIsTheChad(solution.owner(), 9008);
+        assertIsTheChad(solution.owner(), 10665);
 
         // Attempt to transfer the NFT
         vm.expectRevert("Souldbound()");
@@ -217,7 +235,7 @@ contract ChallengeTest is Test {
         address owner = ISolution(solution).owner();
         assertEq(nft.balanceOf(owner), 1);
         assertTrue(nft.ownerOf(1) == owner);
-        assertIsTheChad(solution.owner(), 9008);
+        assertIsTheChad(solution.owner(), 10665);
 
         vm.warp(block.timestamp + 12 days);
         vm.prank(solution.owner());
@@ -232,7 +250,7 @@ contract ChallengeTest is Test {
         address owner = ISolution(solution).owner();
         assertEq(nft.balanceOf(owner), 1);
         assertTrue(nft.ownerOf(1) == owner);
-        assertIsTheChad(solution.owner(), 9008);
+        assertIsTheChad(solution.owner(), 10665);
 
         vm.warp(block.timestamp + 21 days + 1 seconds);
         vm.prank(address(0xdeadbeef));

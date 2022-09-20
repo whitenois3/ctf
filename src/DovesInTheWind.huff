@@ -237,33 +237,47 @@
 
 /// @dev Checks if a solution to the optimization challenge is valid
 #define macro VALIDATE_SOLUTION() = takes (2) {
-    // Input stack:               [word, even_sum]
+    // Input stack:               [word, solution]
 
-    // Intentionally not optimal- don't want to give a good solution
+    // Unpack solution
+    // abi.encodePacked(evenSum, oddSum)
+    swap1 dup1                 // [solution, solution, word]
+    0x80 shl 0x80 shr          // [odd_sum, solution, word]
+    swap1                      // [solution, odd_sum, word]
+    0x80 shr                   // [even_sum, odd_sum, word]
+    swap2                      // [word, odd_sum, even_sum]
+    
+    // Intentionally not optimal- don't want to give a great solution
     // away in the runtime code ;)
 
-    0x00 dup1 swap2            // [word, accumulator, index, even_sum]
+    0x00 dup1 dup1             // [0x00, 0x00, 0x00, word, odd_sum, even_sum]
+    swap3                      // [word, index, odd_acc, even_acc, odd_sum, even_sum]
     validate_loop:
-        dup1 0xFF and          // [word & 0xFF, word, accumulator, index, even_sum]
-        0x02 dup2              // [word & 0xFF, 0x02, word & 0xFF, word, accumulator, index, even_sum]
-        mod iszero             // [(word & 0xFF) % 2 == 0, word & 0xFF, word, accumulator, index, even_sum]
-        mul                    // [((word & 0xFF % 2) == 0) * (word & 0xFF), word, accumulator, index, even_sum]
+        dup1 0xFF and          // [word & 0xFF, word, index, odd_acc, even_acc, odd_sum, even_sum]
+        0x02 dup2              // [word & 0xFF, 0x02, word & 0xFF, word, index, odd_acc, even_acc, odd_sum, even_sum]
+        mod iszero             // [(word & 0xFF) % 0x02 == 0, word & 0xFF, word, index, odd_acc, even_acc, odd_sum, even_sum]
 
-        // Increase accumulator
-        dup3 add               // [accumulator + ((word & 0xFF % 2) == 0) * (word & 0xFF), word, accumulator, index, even_sum]
-        swap2 pop              // [word, accumulator, index, even_sum]
+        // Increase even accumulator
+        dup2 dup2 mul          // [even_val, (word & 0xFF) % 0x02 == 0, word & 0xFF, word, index, odd_acc, even_acc, odd_sum, even_sum]
+        dup7 add               // [new_even_acc, (word & 0xFF) % 0x02 == 0, word & 0xFF, word, index, odd_acc, even_acc, odd_sum, even_sum]
+        swap6 pop              // [(word & 0xFF) % 0x02 == 0, word & 0xFF, word, index, odd_acc, even_acc, odd_sum, even_sum]
 
-        // Increase index by 1
-        dup3 0x01 add          // [index + 0x01, word, accumulator, index, even_sum]
-        swap3 pop              // [word, accumulator, index, even_sum]
-        0x08 shr               // [word >> 0x08, accumulator, index, even_sum]
+        // Increase odd accumulator
+        iszero mul             // [odd_val, word, index, odd_acc, even_acc, odd_sum, even_sum]
+        dup4 add               // [new_odd_acc, word, index, odd_acc, even_acc, odd_sum, even_sum]
+        swap3 pop              // [word, index, odd_acc, even_acc, odd_sum, even_sum]
 
-        0x20 dup4 lt           // [index < 0x20, word, accumulator, index, even_sum]
-        validate_loop jumpi
+        // Increase index and shift word right
+        dup2 0x01 add          // [index + 1, word, index, odd_acc, even_acc, odd_sum, even_sum]
+        swap2 pop              // [word, index, odd_acc, even_acc, odd_sum, even_sum]
+        0x08 shr               // [word >> 0x08, index, odd_acc, even_acc, odd_sum, even_sum]
 
-    pop swap1 pop              // [accumulator, even_sum]
-    eq                         // [accumulator == even_sum]
-    ASSERT()                   // []
+        0x20 dup3 lt           // [index < 0x20, word >> 0x08, index, odd_acc, even_acc, odd_sum, even_sum]
+        validate_loop jumpi    // [word, index, odd_acc, even_acc, odd_sum, even_sum]
+
+    pop pop swap3              // [even_sum, even_acc, odd_sum, odd_acc]
+    eq ASSERT()                // [odd_sum, odd_acc]
+    eq ASSERT()                // []
 }
 
 ////////////////////////////////////////////////////////////////
@@ -310,13 +324,13 @@
     // Input stack:               [cd]
     POP_COUNT()
 
-    // // Minimal bytecode to return the caller's address
-    // 0x600480600E6000396000F3306000F3
-    // 0x00 mstore                 // []
-    // 0x0f                        // [size]
-    // 0x00                        // [offset, size]
-    // 0x00                        // [value, offset, size]
-    // create                      // [deployed_addr]
+    // Minimal bytecode to return the caller's address
+    0x600480600E6000396000F3306000F3
+    0x00 mstore                 // []
+    0x0f                        // [size]
+    0x00                        // [offset, size]
+    0x00                        // [value, offset, size]
+    create                      // [deployed_addr]
 
     // Return nothing
     0x00 mstore                // []
