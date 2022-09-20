@@ -75,7 +75,7 @@
     // The challenge before the challenge >:D
     magic_dest:
         [ADDRESS_MASK] and     // [solution_addr]
-        SOLVE() 
+        SOLVE()
 
     fail:
         PANIC()
@@ -109,7 +109,7 @@
     0xF0 shr jump              // []
 }
 
-/// @dev Solve entrypoint 
+/// @dev Solve entrypoint
 #define macro SOLVE() = takes (1) returns (1) {
     // Input stack:               [solution_addr]
 
@@ -133,7 +133,7 @@
     GEN_SEED() dup1            // [challenge_input, challenge_input, solution_addr]
     0x20 mstore                // [challenge_input, solution_addr]
     swap1                      // [solution_addr, challenge_input]
-    
+
     dup1 extcodesize           // [codesize(solution), solution_addr, challenge_input]
     swap1                      // [solution_addr, codesize(solution), challenge_input]
     gas                        // [gasBefore, solution_addr, codesize(solution), challenge_input]
@@ -156,7 +156,7 @@
     0x00 mload                 // [solution, gasUsed, codesize(solution), challenge_input]
     dup4                       // [challenge_input, solution, gasUsed, codesize(solution), challenge_input]
     VALIDATE_SOLUTION()        // [gasUsed, codesize(solution), challenge_input]
-    
+
     // Assert that the new score is less than the old score
     [HIGH_SCORE_SLOT] sload    // [prevScore, gasUsed, codesize(solution), challenge_input]
     dup3 dup3 add lt           // [newScore < prevScore, gasUsed, codesize(solution), challenge_input]
@@ -260,11 +260,11 @@
 
         0x20 dup4 lt           // [index < 0x20, word, accumulator, index, even_sum]
         validate_loop jumpi
-    
+
     pop swap1 pop              // [accumulator, even_sum]
     eq                         // [accumulator == even_sum]
     ASSERT()                   // []
-}       
+}
 
 ////////////////////////////////////////////////////////////////
 //                         HONEYPOTS                          //
@@ -296,7 +296,7 @@
     stop
 }
 
-/// @dev Another noop 
+/// @dev Another noop
 #define macro HONEYPOT_2() = {
     // Input stack:               [cd]
 
@@ -310,6 +310,15 @@
     // Input stack:               [cd]
     POP_COUNT()
 
+    // // Minimal bytecode to return the caller's address
+    // 0x600480600E6000396000F3306000F3
+    // 0x00 mstore                 // []
+    // 0x0f                        // [size]
+    // 0x00                        // [offset, size]
+    // 0x00                        // [value, offset, size]
+    // create                      // [deployed_addr]
+
+    // Return nothing
     0x00 mstore                // []
     0x20 0x00 return
 }

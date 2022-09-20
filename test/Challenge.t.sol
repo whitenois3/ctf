@@ -185,6 +185,30 @@ contract ChallengeTest is Test {
         nft.claim();
     }
 
+    function testFailTransfer() public {
+        // Attempt first solution
+        solve(solution.owner(), address(solution), BEEFBABE_MAGIC);
+
+        // Assert that we've received a reward NFT for our efforts
+        address owner = ISolution(solution).owner();
+        assertEq(nft.balanceOf(owner), 1);
+        assertTrue(nft.ownerOf(1) == owner);
+        assertIsTheChad(solution.owner(), 9008);
+
+        // Attempt to transfer the NFT
+        vm.expectRevert("Souldbound()");
+        nft.transferFrom(owner, address(0xDEADBEEF), 1);
+
+        // Attempt to safe transfer the NFT
+        vm.expectRevert("Souldbound()");
+        nft.safeTransferFrom(owner, address(0xDEADBEEF), 1);
+
+        // vm.warp(block.timestamp + 21 days + 1 seconds);
+        // vm.prank(solution.owner());
+        // nft.claim();
+        // nft.claim();
+    }
+
     function testFailClaimChadNFTBeforeEnd() public {
         // Attempt first solution
         solve(solution.owner(), address(solution), BEEFBABE_MAGIC);
