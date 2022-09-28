@@ -2,10 +2,7 @@
 
 # Whitenoise CTF I • [![ci](https://github.com/whitenois3/ctf/actions/workflows/test.yml/badge.svg)](https://github.com/whitenois3/ctf/actions/workflows/test.yml) [![license](https://img.shields.io/badge/License-MIT-orange.svg?label=license)](https://opensource.org/licenses/MIT)
 
-
-_CODENAME: Doves in the Wind_
-
-Whitenoise CTF I: Hashy Dispatch.
+Whitenoise CTF I: Doves in the Wind.
 
 
 ### Licensing
