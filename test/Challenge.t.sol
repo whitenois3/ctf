@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import {WhitenoiseNFT} from "../src/WhitenoiseNFT.sol";
-import {Test} from "forge-std/Test.sol";
-import {HuffDeployer} from "foundry-huff/HuffDeployer.sol";
+import { WhitenoiseNFT } from "src/WhitenoiseNFT.sol";
+
+import "forge-std/Test.sol";
+import "foundry-huff/HuffDeployer.sol";
 
 /// @notice Solution interface
 interface ISolution {
