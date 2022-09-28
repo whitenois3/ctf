@@ -65,7 +65,7 @@ contract OptimizedSolution is ISolution {
                 if even {
                     evenAcc := add(evenAcc, masked)
                 }
-                
+
                 if iszero(even) {
                     oddAcc := add(oddAcc, masked)
                 }

@@ -9,5 +9,3 @@ remappings = [
   'solmate=lib/solmate/src',
 ]
 ffi = true
-
-# See more config options https://github.com/foundry-rs/foundry/tree/master/config

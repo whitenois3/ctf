@@ -1,8 +1,9 @@
 pragma solidity ^0.8.17;
 
-import {Script} from "forge-std/Script.sol";
-import {HuffDeployer} from "foundry-huff/HuffDeployer.sol";
-import {WhitenoiseNFT} from "../src/WhitenoiseNFT.sol";
+import "forge-std/Script.sol";
+import "foundry-huff/HuffDeployer.sol";
+
+import { WhitenoiseNFT } from "src/WhitenoiseNFT.sol";
 
 contract Deploy is Script {
     function run() external {
