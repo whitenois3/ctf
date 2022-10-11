@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { WhitenoiseNFT } from "src/WhitenoiseNFT.sol";
-
 import "forge-std/Test.sol";
 import "foundry-huff/HuffDeployer.sol";
+import {WhitenoiseNFT} from "src/WhitenoiseNFT.sol";
 
 /// @notice Solution interface
 interface ISolution {
@@ -21,8 +20,8 @@ contract Solution is ISolution {
 
     /// @dev Sum all even bytes in received word
     function solve(uint256 word) external returns (uint256) {
-        uint evenAcc;
-        uint oddAcc;
+        uint256 evenAcc;
+        uint256 oddAcc;
 
         for (uint256 i = 0; i < 32; i++) {
             uint256 masked = word & 0xFF;
@@ -44,39 +43,38 @@ contract Solution is ISolution {
     }
 }
 
-/// @notice An optimized solution
+/// @notice A more optimized solution
 contract OptimizedSolution is ISolution {
     function owner() external pure returns (address) {
-        return 0x00000000000000000000000000000000bEefbabe;
+        assembly {
+            mstore(0x00, 0xbEefbabe)
+            return(0x00, 0x20)
+        }
     }
 
-    /// @dev Hard-code answer to 1958 on local anvil testnet
+    /// @dev Sum all even bytes in received word
     function solve(uint256 word) external returns (uint256) {
-        uint256 evenAcc;
-        uint256 oddAcc;
-        uint256 masked;
-        uint256 res;
-
         assembly {
+            let evenAcc := 0
+            let oddAcc := 0
+            let masked := 0
+
             for { let i := 0 } lt(i, 0x20) { i := add(i, 0x01) } {
                 masked := and(word, 0xFF)
                 let even := iszero(mod(masked, 0x02))
 
-                if even {
-                    evenAcc := add(evenAcc, masked)
-                }
+                if even { evenAcc := add(evenAcc, masked) }
 
-                if iszero(even) {
-                    oddAcc := add(oddAcc, masked)
-                }
+                if iszero(even) { oddAcc := add(oddAcc, masked) }
 
                 word := shr(0x08, word)
             }
 
-            res := or(shl(0x80, evenAcc), oddAcc)
+            // Store the result in scratch space @ 0x00
+            mstore(0x00, or(shl(0x80, evenAcc), oddAcc))
+            // Return the result
+            return(0x00, 0x20)
         }
-
-        return res;
     }
 }
 
@@ -131,7 +129,7 @@ contract ChallengeTest is Test {
 
         // Attempt second solution with an optimized solution contract
         solve(oSolution.owner(), address(oSolution), BEEFBABE_MAGIC);
-        assertIsTheChad(oSolution.owner(), 5239);
+        assertIsTheChad(oSolution.owner(), 5195);
     }
 
     function testFailCallChallengeFromContract() public {

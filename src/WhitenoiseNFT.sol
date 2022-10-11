@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { Base64 } from "./utils/Base64.sol";
+import {Base64} from "./utils/Base64.sol";
 
-import { ERC721 } from "solmate/tokens/ERC721.sol";
-import { ReentrancyGuard } from "solmate/utils/ReentrancyGuard.sol";
+import {ERC721} from "solmate/tokens/ERC721.sol";
+import {ReentrancyGuard} from "solmate/utils/ReentrancyGuard.sol";
 
 /// @title Whitenoise Challenge NFT
 /// @author clabby <https://github.com/clabby>
@@ -138,7 +138,8 @@ contract WhitenoiseNFT is ERC721, ReentrancyGuard {
     /// @notice Get the token URI of a token ID
     function tokenURI(uint256 id) public pure override returns (string memory) {
         string memory name = "Optimizer";
-        string memory description = "A Soulbound token demonstrating a mastery in optimization and evm wizardry. This address submitted the most optimized solution to the first Whitenoise challenge.";
+        string memory description =
+            "A Soulbound token demonstrating a mastery in optimization and evm wizardry. This address submitted the most optimized solution to the first Whitenoise challenge.";
         string memory img_url = "ipfs://QmT5v6ioQMUHgsYXTXL8oAaVAitxqK6NE7Q5bacUzTVgbA";
 
         // Check for creator special edition
@@ -173,9 +174,7 @@ contract WhitenoiseNFT is ERC721, ReentrancyGuard {
         );
 
         // Prepend data:application/json;base64 to define the base64 encoded data
-        return string(
-            abi.encodePacked("data:application/json;base64,", json)
-        );
+        return string(abi.encodePacked("data:application/json;base64,", json));
     }
 
     /// @notice Returns the current Chad.
@@ -214,11 +213,7 @@ contract WhitenoiseNFT is ERC721, ReentrancyGuard {
 
     /// @notice Submit a new solution.
     /// @dev Only callable by the owner of this contract (DovesInTheWind.huff)
-    function submit(address _solver, uint256 gasUsed, uint256 codeSize)
-        external
-        onlyOwner
-        nonReentrant
-    {
+    function submit(address _solver, uint256 gasUsed, uint256 codeSize) external onlyOwner nonReentrant {
         // Assert that the the challenge is not over
         if (block.timestamp >= END_TIME) {
             revert OnlyDuringChallenge();
